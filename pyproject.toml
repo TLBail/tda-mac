@@ -1,0 +1,49 @@
+[build-system]
+requires = ["setuptools>=61.0", "wheel>=0.31.0"]
+build-backend = "setuptools.build_meta"
+
+[project]
+name = "ahoi"
+description = ""
+requires-python = ">=3.7"
+keywords = ["ahoi"]
+license = {file = "LICENSE"}
+readme = "INSTALL"
+authors = [{name = "TUHH"}]
+version = "2019.1"
+
+classifiers = [
+    "Intended Audience :: Science/Research",
+    "License :: OSI Approved :: BSD License",
+    "Programming Language :: Python",
+    "Programming Language :: Python :: 3.7",
+    "Programming Language :: Python :: 3.8",
+    "Programming Language :: Python :: 3.9",
+    "Programming Language :: Python :: 3.10",
+    "Programming Language :: Python :: 3.11"
+]
+dependencies = [
+    "pyserial",
+    "numpy",
+    "matplotlib",
+    "pillow"
+]
+
+[project.urls]
+homepage = "https://collaborating.tuhh.de/e-24/public/ahoi/pylib"
+documentation = "https://collaborating.tuhh.de/e-24/public/ahoi/pylib"
+repository = "https://collaborating.tuhh.de/e-24/public/ahoi/pylib"
+
+[tool.setuptools.packages.find]
+where = ["lib", "apps"]
+exclude = [""]
+
+[project.optional-dependencies]
+rpi = [
+    "picamera",
+    "RPi.GPIO",
+    "pygame"
+]
+
+[console_scripts]
+mosh = "mosh.mosh"
