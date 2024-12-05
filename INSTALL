@@ -139,3 +139,9 @@ You also have to ensure that the file "mosh.py" is executable. In Linux, run
   ```
 
 in a terminal. You can run `mosh.py` from anywhere inside a terminal.
+
+
+Windows users can install ahoi module with the following command:
+```
+pip install -e .
+```
