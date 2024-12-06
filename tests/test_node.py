@@ -1,7 +1,7 @@
 import unittest
 from src.i_modem import IModem
-from src.modem_mock import ModemMock
-from src.modem import Modem
+from src.Mock.modem_mock import ModemMock
+
 
 def connectModem(modem: IModem) -> None:
     modem.connect("COM1")

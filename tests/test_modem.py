@@ -1,36 +1,21 @@
 import threading
 import unittest
-from unittest.mock import Mock, call, ANY
+from unittest.mock import Mock
 from src.i_modem import IModem
-from src.modem_mock import ModemMock
-from src.modem import Modem
-from src.node import Node
+from src.Mock.modem_mock import ModemMock
+from src.Mock.node_mock import NodeMock
 from ahoi.modem.packet import makePacket, printPacket
 import time
 
-
-def connectModem(modem: IModem) -> None:
-    modem.connect("COM1")
-
-def testPacket():
-    return makePacket()
-
-    
-def onNode1Receive(modem, packet):
-    """response with an ACK packet"""
-    packet = makePacket()
-    modem.simulateRx(packet)
 
 class TestModem(unittest.TestCase):
     def setUp(self):
         self.modem = ModemMock([])
         self.mock = Mock()
 
-
     def test_connection(self):
-        connectModem(self.modem)
+        self.modem.connect("COM1")
         assert self.modem.connected
-
 
     def test_sending_ack(self):
         # test
@@ -47,13 +32,14 @@ class TestModem(unittest.TestCase):
 
         # assert
         self.mock.assert_called_once_with(packet)
-    
 
     def test_Rx_callback(self):
         self.event = threading.Event()
+
         def onModemReceive(packet):
             self.event.set()
-        node = Node(self.modem, 1)
+
+        node = NodeMock(self.modem, 1)
         node.transmitDelay = 1
         # test
         self.modem.addRxCallback(onModemReceive)
@@ -63,13 +49,14 @@ class TestModem(unittest.TestCase):
         self.event.wait()
         end_time = time.time()
         # assert
-        self.assertGreaterEqual(end_time-start_time, 1)
+        self.assertGreaterEqual(end_time - start_time, 1)
 
     def test_distance_measurement(self):
         self.event = threading.Event()
+
         def onNode1Receive(node, packet):
             """payload is the full time of flight because ModemMock does not simulate time of flight"""
-            half_tof = int((node.receptionDelay + node.transmitDelay) * 1e6) # Convertir en microsecondes
+            half_tof = int((node.receptionDelay + node.transmitDelay) * 1e6)  # Convertir en microsecondes
             tof_payload = half_tof.to_bytes(4, 'big')
             ack_packet = makePacket(
                 src=node.adress,  # Source devient la destination (ACK retourne au sender)
@@ -79,10 +66,11 @@ class TestModem(unittest.TestCase):
             )
             node.transmit(ack_packet)
 
-        node = Node(self.modem, 1, onNode1Receive)
+        node = NodeMock(self.modem, 1, onNode1Receive)
         node.transmitDelay = 1
         node.receptionDelay = 1
         self.modem.nodes.append(node)
+
         # test
 
         def onModemReceive(pkt):
@@ -104,9 +92,11 @@ class TestModem(unittest.TestCase):
 
     def test_Tx_delay(self):
         self.event = threading.Event()
+
         def onModemReceive(modem, packet):
             self.event.set()
-        node = Node(self.modem, 1, onModemReceive)
+
+        node = NodeMock(self.modem, 1, onModemReceive)
         node.receptionDelay = 1
         self.modem.nodes.append(node)
         # test
@@ -121,39 +111,46 @@ class TestModem(unittest.TestCase):
     def test_multiple_node_broadcast(self):
         self.modem.connect("COM1")
         self.event = threading.Event()
+
         def onNode1Receive(node, packet):
             self.event.set()
-        node = Node(self.modem, 1, onNode1Receive)
+
+        node = NodeMock(self.modem, 1, onNode1Receive)
         node.receptionDelay = 1
         self.modem.nodes.append(node)
         self.event2 = threading.Event()
+
         def onNode2Receive(node, packet):
             self.event2.set()
-        node2 = Node(self.modem, 2, onNode2Receive)
+
+        node2 = NodeMock(self.modem, 2, onNode2Receive)
         node2.receptionDelay = 2
         self.modem.nodes.append(node2)
         self.event3 = threading.Event()
+
         def onNode3Receive(node, packet):
             self.event3.set()
-        node3 = Node(self.modem, 3, onNode3Receive)
+
+        node3 = NodeMock(self.modem, 3, onNode3Receive)
         node3.receptionDelay = 3
         self.modem.nodes.append(node3)
 
-        #test
+        # test
         self.modem.send(255, 0, 0, b'\x00\x00\x00', 0)
-        #assert all nodes received the packet
+        # assert all nodes received the packet
         self.event.wait()
         self.event2.wait()
         self.event3.wait()
 
-    def test_delay_on_multipleNode(self):
+    def test_delay_on_multipleNodeMock(self):
         self.modem.connect("COM1")
         self.event = threading.Event()
+
         def onNode1Receive(node, packet):
             self.event.set()
             self.timeAtReceptionNode1 = time.time()
 
-        node = Node(self.modem, 1, onNode1Receive)
+        node = NodeMock(self.modem, 1, onNode1Receive)
         node.receptionDelay = 1
         self.modem.nodes.append(node)
         self.event2 = threading.Event()
@@ -162,15 +159,16 @@ class TestModem(unittest.TestCase):
             self.event2.set()
             self.timeAtReceptionNode2 = time.time()
 
-        node2 = Node(self.modem, 2, onNode2Receive)
+        node2 = NodeMock(self.modem, 2, onNode2Receive)
         node2.receptionDelay = 2
         self.modem.nodes.append(node2)
         self.event3 = threading.Event()
+
         def onNode3Receive(node, packet):
             self.event3.set()
             self.timeAtReceptionNode3 = time.time()
 
-        node3 = Node(self.modem, 3, onNode3Receive)
+        node3 = NodeMock(self.modem, 3, onNode3Receive)
         node3.receptionDelay = 3
         self.modem.nodes.append(node3)
 

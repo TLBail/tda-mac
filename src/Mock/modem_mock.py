@@ -1,4 +1,5 @@
-from .i_modem import IModem
+from src.i_modem import IModem
+from lib.ahoi.modem.packet import makePacket
 class ModemMock(IModem):
     def __init__(self, nodes):
         self.connected = False
@@ -19,12 +20,13 @@ class ModemMock(IModem):
             self.callbacks.remove(cb)
 
     def send(self, dst, src, type, payload=bytearray(), status=None, dsn=None):
+        pkt = makePacket(src, dst, type, status, dsn, payload)
         if not self.connected:
             raise Exception("Modem not connected")
         print(f"Mock: Sent packet to {dst} with payload {payload}")
         for node in self.nodes:
             if node.adress == dst or dst == 255:
-                node.receive(payload)
+                node.receive(pkt)
 
     def simulateRx(self, packet):
         for callback in self.callbacks:
