@@ -1,7 +1,19 @@
 from src.modem_mock import ModemMock
 import time
 import threading
+from lib.ahoi.modem.packet import makePacket
 
+def ResponseWithAckForDelay(node, delay):
+    """payload is the full time of flight because ModemMock does not simulate time of flight"""
+    half_tof = int((node.receptionDelay + node.transmitDelay) * 1e6)  # Convertir en microsecondes
+    tof_payload = half_tof.to_bytes(4, 'big')
+    ack_packet = makePacket(
+        src=node.adress,  # Source devient la destination (ACK retourne au sender)
+        dst=0,
+        type=0x7F,  # Type pour les ACK de ranging
+        payload=tof_payload
+    )
+    node.transmit(ack_packet)
 
 class Node:
 

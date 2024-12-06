@@ -1,6 +1,5 @@
 from ahoi.modem.modem import Modem as AHOIModem
 from .i_modem import IModem
-
 class Modem(AHOIModem, IModem):
     """Implémentation réelle de l'interface IModem."""
 

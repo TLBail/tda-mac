@@ -118,5 +118,73 @@ class TestModem(unittest.TestCase):
         self.event.wait()
         assert len(node.receivePackets) == 1
 
+    def test_multiple_node_broadcast(self):
+        self.modem.connect("COM1")
+        self.event = threading.Event()
+        def onNode1Receive(node, packet):
+            self.event.set()
+        node = Node(self.modem, 1, onNode1Receive)
+        node.receptionDelay = 1
+        self.modem.nodes.append(node)
+        self.event2 = threading.Event()
+        def onNode2Receive(node, packet):
+            self.event2.set()
+        node2 = Node(self.modem, 2, onNode2Receive)
+        node2.receptionDelay = 2
+        self.modem.nodes.append(node2)
+        self.event3 = threading.Event()
+        def onNode3Receive(node, packet):
+            self.event3.set()
+        node3 = Node(self.modem, 3, onNode3Receive)
+        node3.receptionDelay = 3
+        self.modem.nodes.append(node3)
+
+        #test
+        self.modem.send(255, 0, 0, b'\x00\x00\x00', 0)
+        #assert all nodes received the packet
+        self.event.wait()
+        self.event2.wait()
+        self.event3.wait()
+
+    def test_delay_on_multipleNode(self):
+        self.modem.connect("COM1")
+        self.event = threading.Event()
+        def onNode1Receive(node, packet):
+            self.event.set()
+            self.timeAtReceptionNode1 = time.time()
+
+        node = Node(self.modem, 1, onNode1Receive)
+        node.receptionDelay = 1
+        self.modem.nodes.append(node)
+        self.event2 = threading.Event()
+
+        def onNode2Receive(node, packet):
+            self.event2.set()
+            self.timeAtReceptionNode2 = time.time()
+
+        node2 = Node(self.modem, 2, onNode2Receive)
+        node2.receptionDelay = 2
+        self.modem.nodes.append(node2)
+        self.event3 = threading.Event()
+        def onNode3Receive(node, packet):
+            self.event3.set()
+            self.timeAtReceptionNode3 = time.time()
+
+        node3 = Node(self.modem, 3, onNode3Receive)
+        node3.receptionDelay = 3
+        self.modem.nodes.append(node3)
+
+        # test
+        self.modem.send(255, 0, 0, b'\x00\x00\x00', 0)
+        # assert all nodes received the packet
+        self.event.wait()
+        self.event2.wait()
+        self.event3.wait()
+
+        # assert delays are respected
+        assert self.timeAtReceptionNode1 < self.timeAtReceptionNode2
+        assert self.timeAtReceptionNode2 < self.timeAtReceptionNode3
+
+
 if __name__ == '__main__':
     unittest.main()
