@@ -27,9 +27,10 @@ class GatewayTDAMAC:
         self.broadcastAddress = 255
         self.receivePacket = {}
         self.receivePacketTimeMs = {}
-        self.DataRequestEvent = threading.Event()
+        self.ReceiveAllDataPacketEvent = threading.Event()
         self.timeoutDataRequestSec = 20
         self.jitterThresholdMs = 1000
+        self.periodeSec = 60 * 4
 
     def run(self):
         self.pingTopology()
@@ -68,12 +69,11 @@ class GatewayTDAMAC:
                     nb_attempts += 1
                     print(f"Tentative nb: " + str(nb_attempts) + "Aucune réponse du nœud {node}. Renvoi du paquet ")
 
-
         self.modemGateway.removeRxCallback(modemCallback)
 
     def calculateNodesDelay(self):
         self.assignedTransmitDelaysMs = {}
-        # transmit of the first node is 0
+        # transmit delay of the first node is 0
         self.assignedTransmitDelaysMs[self.topology[0]] = 0
 
         for i in range(1, len(self.topology)):
@@ -97,22 +97,30 @@ class GatewayTDAMAC:
                 0
             )
 
-
     def main(self):
         self.modemGateway.addRxCallback(self.packetCallback)
         while True:
             self.receivePacket = {}
             self.receivePacketTimeMs = {}
-            self.DataRequestEvent.clear()
+            self.ReceiveAllDataPacketEvent.clear()
             transmitTimeMs = time.time() * 1000
             self.RequestDataPacket()
-            if self.DataRequestEvent.wait(timeout=self.timeoutDataRequestSec):
+            if self.ReceiveAllDataPacketEvent.wait(timeout=self.timeoutDataRequestSec):
                 print("All data packets received")
                 # TODO: handle data packets
             else:
                 print("Timeout on data packets reception")
                 # TODO: handle timeout
             for nodeId in self.topology:
+                if nodeId not in self.receivePacket:
+                    # TODO:  if it's the first time we don't receive the data packet of node x
+                    # retranmist the tdi packet to node x
+                    # else
+                    # do nothing
+                    # or determine if we should increase the guard interval or timeout
+                    continue
+
+                # check if the packet arrived at the expected time
                 expectedArrivalTime = transmitTimeMs + \
                                       self.nodesInfo[nodeId].receptionDelayMs + \
                                       self.assignedTransmitDelaysMs[nodeId] + \
@@ -126,6 +134,11 @@ class GatewayTDAMAC:
                     self.calculateNodesDelay()
                     self.sendAssignedTransmitDelaysToNodes()
                     self.modemGateway.addRxCallback(self.packetCallback)
+
+
+            # wait for the next period
+            elpasedTimeSec = time.time() - (transmitTimeMs / 1000)
+            time.sleep(max(self.periodeSec - elpasedTimeSec, 0))
         self.modemGateway.removeRxCallback(self.packetCallback)
 
     def packetCallback(self, pkt):
@@ -136,7 +149,7 @@ class GatewayTDAMAC:
 
             # check if we have received all data packets of the topology
             if len(self.receivePacket) == len(self.topology):
-                self.DataRequestEvent.set()
+                self.ReceiveAllDataPacketEvent.set()
         else:
             print("Received packet with unknown type")
             printPacket(pkt)
