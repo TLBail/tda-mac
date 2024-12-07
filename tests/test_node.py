@@ -9,10 +9,6 @@ from src.Mock.node_mock_gateway import NodeMockGateway, ResponseWithAckForDelay
 from src.constantes import ID_PAQUET_TDI
 from src.GatewayTDAMAC import GatewayTDAMAC
 
-
-def connectModem(modem: IModem) -> None:
-    modem.connect("COM1")
-
 class TestModem(unittest.TestCase):
     def setUp(self):
         self.modemGateway = ModemMockGateway()
@@ -58,9 +54,8 @@ class TestModem(unittest.TestCase):
         assert nodeTDAMAC.assignedTransmitDelaysMs == 0
 
     def test_send(self):
-        # init mock gateway
+        # init mocks
         self.nodeModem = ModemMockNode(1, self.modemGateway)
-        self.nodeModem.connect("COM1")
         self.gateway.topology = [1]
         node = NodeMockGateway(self.modemGateway, 1, lambda node,pkt: self.nodeModem.simulateRx(pkt))
         node.transmitDelay = 1
@@ -71,6 +66,9 @@ class TestModem(unittest.TestCase):
         nodeTDAMAC = NodeTDAMAC(self.nodeModem)
 
         # init network
+        self.nodeModem.connect("COM1")
+        self.modemGateway.connect("COM2")
+
         self.gateway.pingTopology()
         self.gateway.calculateNodesDelay()
         self.gateway.sendAssignedTransmitDelaysToNodes()
