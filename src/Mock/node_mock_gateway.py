@@ -1,12 +1,14 @@
-from src.Mock.modem_mock import ModemMock
+from src.Mock.modem_mock_gateway import ModemMockGateway
 import time
 import threading
 from lib.ahoi.modem.packet import makePacket
+from src.constantes import FLAG_R
+
 
 def ResponseWithAckForDelay(node, delay):
     """payload is the full time of flight because ModemMock does not simulate time of flight"""
-    half_tof = int((node.receptionDelay + node.transmitDelay) * 1e6)
-    tof_payload = half_tof.to_bytes(4, 'big')
+    tof = int((node.receptionDelay + node.transmitDelay) * 1e6)
+    tof_payload = tof.to_bytes(4, 'big')
     ack_packet = makePacket(
         src=node.adress,
         dst=0,
@@ -14,22 +16,9 @@ def ResponseWithAckForDelay(node, delay):
         payload=tof_payload
     )
     node.transmit(ack_packet)
+class NodeMockGateway:
 
-def CustomResponseForDelay(node, delay):
-    """payload contain the full time of flight because ModemMock does not simulate time of flight"""
-    receptionDelay = int(node.receptionDelay * 1e6).to_bytes(4, 'big')
-    transmitDelay = int(node.transmitDelay * 1e6).to_bytes(4, 'big')
-    tof_payload = receptionDelay + transmitDelay
-    ack_packet = makePacket(
-        src=node.adress,
-        dst=0,
-        type=0x7F,
-        payload=tof_payload
-    )
-    node.transmit(ack_packet)
-class NodeMock:
-
-    def __init__(self, modem: ModemMock, adress, onReceive=None):
+    def __init__(self, modem: ModemMockGateway, adress, onReceive=None):
         self.modem = modem
         self.adress = adress
         self.onReceive = onReceive
@@ -70,6 +59,8 @@ class NodeMock:
             time.sleep(self.receptionDelay)
             self.receivePackets.append(packet)
             print(f"Node {self.adress} received packet")
+            if (packet.header.status & FLAG_R) > 0:
+                ResponseWithAckForDelay(self, packet)
             if self.onReceive is not None:
                 self.onReceive(self, packet)
 
