@@ -14,15 +14,16 @@ class GatewayTDAMAC:
         self.topology: [] = topology
         self.nodeTwoWayTimeOfFlightMs: Dict[str, int] = {}
         self.dataPacketOctetSize = 512
-        self.nodeDataPacketTransmitTimeMs = 5 * 1e6
-        self.guardIntervalMs = 1 * 1e6
+        self.nodeDataPacketTransmitTimeMs = int(5 * 1e6)
+        self.guardIntervalMs = int(1 * 1e6)
         self.timeoutPingSec = 5
-        self.receivePacket = {}
+        self.receivedPaquetOfCurrentReq = {}
+        self.receivedPaquets = []
         self.receivePacketTimeMs = {}
         self.ReceiveAllDataPacketEvent = threading.Event()
         self.timeoutDataRequestSec = 20
         self.jitterThresholdMs = 1000
-        self.periodeSec = 60 * 4
+        self.periodeSec = int(60 * 4)
         self.running = False
 
     def run(self):
@@ -64,8 +65,8 @@ class GatewayTDAMAC:
 
         for i in range(1, len(self.topology)):
             assignedTransmitDelayPrevious = self.assignedTransmitDelaysMs[self.topology[i - 1]]
-            transmitDelayToNode = self.nodeTwoWayTimeOfFlightMs[self.topology[i]] / 2
-            transmitDelayToPreviousNode = self.nodeTwoWayTimeOfFlightMs[self.topology[i - 1]] / 2
+            transmitDelayToNode = self.nodeTwoWayTimeOfFlightMs[self.topology[i]] // 2
+            transmitDelayToPreviousNode = self.nodeTwoWayTimeOfFlightMs[self.topology[i - 1]] // 2
 
             self.assignedTransmitDelaysMs[self.topology[i]] = \
                 assignedTransmitDelayPrevious + \
@@ -88,7 +89,7 @@ class GatewayTDAMAC:
         self.modemGateway.addRxCallback(self.packetCallback)
         self.running = True
         while self.running:
-            self.receivePacket = {}
+            self.receivedPaquetOfCurrentReq = {}
             self.receivePacketTimeMs = {}
             self.ReceiveAllDataPacketEvent.clear()
             transmitTimeMs = time.time() * 1000
@@ -101,7 +102,7 @@ class GatewayTDAMAC:
                 print("Timeout on data packets reception")
                 # TODO: handle timeout
             for nodeId in self.topology:
-                if nodeId not in self.receivePacket:
+                if nodeId not in self.receivedPaquetOfCurrentReq:
                     # TODO:  if it's the first time we don't receive the data packet of node x
                     # retranmist the tdi packet to node x
                     # else
@@ -134,11 +135,12 @@ class GatewayTDAMAC:
     def packetCallback(self, pkt):
         # check if we have received a data packet
         if pkt.header.type == ID_PAQUET_DATA:
-            self.receivePacket[pkt.header.src] = pkt
+            self.receivedPaquetOfCurrentReq[pkt.header.src] = pkt
             self.receivePacketTimeMs[pkt.header.src] = time.time() * 1000
+            self.receivedPaquets.append(pkt)
 
             # check if we have received all data packets of the topology
-            if len(self.receivePacket) == len(self.topology):
+            if len(self.receivedPaquetOfCurrentReq) == len(self.topology):
                 self.ReceiveAllDataPacketEvent.set()
         else:
             print("Received packet with unknown type")
