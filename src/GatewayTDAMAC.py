@@ -25,6 +25,7 @@ class GatewayTDAMAC:
         self.jitterThresholdMs = 1000
         self.periodeSec = int(60 * 4)
         self.running = False
+        self.dataPaquetSequenceNumber = 0
 
     def run(self):
         self.pingTopology()
@@ -134,7 +135,7 @@ class GatewayTDAMAC:
 
     def packetCallback(self, pkt):
         # check if we have received a data packet
-        if pkt.header.type == ID_PAQUET_DATA:
+        if pkt.header.type == ID_PAQUET_DATA and pkt.header.dsn == self.dataPaquetSequenceNumber:
             self.receivedPaquetOfCurrentReq[pkt.header.src] = pkt
             self.receivePacketTimeMs[pkt.header.src] = time.time() * 1000
             self.receivedPaquets.append(pkt)
@@ -142,17 +143,20 @@ class GatewayTDAMAC:
             # check if we have received all data packets of the topology
             if len(self.receivedPaquetOfCurrentReq) == len(self.topology):
                 self.ReceiveAllDataPacketEvent.set()
+        elif pkt.header.type == ID_PAQUET_DATA:
+            print("Received packet with wrong data sequence number")
         else:
             print("Received packet with unknown type")
             printPacket(pkt)
         pass
 
     def RequestDataPacket(self):
+        self.dataPaquetSequenceNumber = (self.dataPaquetSequenceNumber + 1) % 256
         self.modemGateway.send(
             dst=BROCAST_ADDRESS,
             src=GATEWAY_ID,
             type=ID_PAQUET_REQ_DATA,
             payload=bytearray(),
             status=0,
-            dsn=0
+            dsn=self.dataPaquetSequenceNumber
         )

@@ -43,7 +43,7 @@ class NodeTDAMAC:
                     type=ID_PAQUET_DATA,
                     payload=data,
                     status=0,
-                    dsn=0
+                    dsn=packet.header.dsn
                 )
             threading.Thread(target=sendAsync).start()
 

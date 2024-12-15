@@ -8,12 +8,10 @@ class ModemMockGateway(IModem):
         self.nodes: {} = {}
 
     def connect(self, connection):
-        print(f"Modem Mock Gateway: Connected to {connection}")
         self.connected = True
 
     def addRxCallback(self, callback):
         self.callbacks.append(callback)
-        print(f"Modem Mock Gateway: Added callback {callback}")
 
     def removeRxCallback(self, cb):
         """Remove a function to be called on rx pkt."""

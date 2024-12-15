@@ -3,7 +3,10 @@ import unittest
 from unittest.mock import Mock
 from src.i_modem import IModem
 from src.Mock.modem_mock_gateway import ModemMockGateway
+from src.Mock.modem_mock_node import ModemMockNode
 from src.Mock.node_mock_gateway import NodeMockGateway
+from src.NodeTDAMAC import NodeTDAMAC
+from src.constantes import ID_PAQUET_TDI
 from ahoi.modem.packet import makePacket, printPacket
 from src.constantes import FLAG_R
 import time
@@ -168,6 +171,22 @@ class TestModem(unittest.TestCase):
         # assert delays are respected
         assert self.timeAtReceptionNode1 < self.timeAtReceptionNode2
         assert self.timeAtReceptionNode2 < self.timeAtReceptionNode3
+
+
+
+    def test_connection(self):
+        # init
+        self.nodeModem = ModemMockNode(1, None)
+        self.nodeModem.connect("COM1")
+        nodeTDAMAC = NodeTDAMAC(self.nodeModem)
+
+        def AssertReceiveTDIPaquet():
+            nodeTDAMAC.waitForTDIPacket()
+            assert nodeTDAMAC.assignedTransmitDelaysMs == 0
+
+        threading.Thread(target=AssertReceiveTDIPaquet).start()
+        time.sleep(0.1)
+        self.nodeModem.gatewayModem.send(1, 0, ID_PAQUET_TDI, int(0).to_bytes(4, 'big'), 0, 0)
 
 
 if __name__ == '__main__':
