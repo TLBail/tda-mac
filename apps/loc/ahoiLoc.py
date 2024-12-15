@@ -94,7 +94,7 @@ class Robot:
     # TODO post result to appropriate place
       
     # send new ping
-    self.modem.send(type=self.pktType, dst=255, src=0, dsn=(self.r%256), status=2, payload=bytearray())
+    self.modem.send(type=self.pktType, src=0, dst=255, dsn=(self.r%256), status=2, payload=bytearray())
     
     # next round
     self.r = self.r + 1

@@ -10,11 +10,13 @@ class ModemMockNode(IModem):
         self.transmitDelay = 0
         self.receptionDelay = 0
         self.address = address
+        self.isReceiving = False
 
         # Create a mock gateway if none is provided
         if gatewayModem is None:
             self.gatewayModem = ModemMockGateway()
-            self.gatewayModem.connected = True
+            self.gatewayModem.connect("COM1")
+            self.gatewayModem.receive()
             def onNodeMockReceive(node, packet):
                 self.simulateRx(packet)
 
@@ -27,6 +29,12 @@ class ModemMockNode(IModem):
 
     def connect(self, connection):
         self.connected = True
+
+    def receive(self, thread=False):
+        self.isReceiving = True
+        pass
+
+
     def addRxCallback(self, callback):
         self.callbacks.append(callback)
 
@@ -35,7 +43,7 @@ class ModemMockNode(IModem):
         if cb in self.callbacks:
             self.callbacks.remove(cb)
 
-    def send(self, dst, src, type, payload=bytearray(), status=None, dsn=None):
+    def send(self, src, dst, type, payload=bytearray(), status=None, dsn=None):
         if dst != GATEWAY_ID:
             raise Exception("Mock: Destination must be the gateway")
         pkt = makePacket(src, dst, type, status, dsn, payload)
@@ -43,6 +51,9 @@ class ModemMockNode(IModem):
             raise Exception("Modem not connected")
         print(f"Mock: Send packet to {dst} with payload {payload}")
         self.gatewayModem.nodes[src].transmit(pkt)
+
     def simulateRx(self, packet):
+        if not self.isReceiving:
+            raise Exception("Modem not receiving")
         for callback in self.callbacks:
             callback(packet)

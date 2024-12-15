@@ -6,9 +6,15 @@ class ModemMockGateway(IModem):
         self.connected = False
         self.callbacks = []
         self.nodes: {} = {}
+        self.isReceiving = False
 
     def connect(self, connection):
         self.connected = True
+
+
+    def receive(self, thread=False):
+        self.isReceiving = True
+        pass
 
     def addRxCallback(self, callback):
         self.callbacks.append(callback)
@@ -18,7 +24,7 @@ class ModemMockGateway(IModem):
         if cb in self.callbacks:
             self.callbacks.remove(cb)
 
-    def send(self, dst, src, type, payload=bytearray(), status=None, dsn=None):
+    def send(self, src, dst, type, payload=bytearray(), status=None, dsn=None):
         pkt = makePacket(src, dst, type, status, dsn, payload)
         if not self.connected:
             raise Exception("Modem not connected")
@@ -30,11 +36,10 @@ class ModemMockGateway(IModem):
             self.nodes[dst].receive(pkt)
 
     def simulateRx(self, packet):
+        if not self.isReceiving:
+            raise Exception("Modem not receiving")
         for callback in self.callbacks:
             callback(packet)
 
     def addNode(self, node):
         self.nodes[node.adress] = node
-
-    
-

@@ -9,20 +9,20 @@ import time
 
 class GatewayTDAMAC:
     def __init__(self, modemGateway: IModem, topology: []):
-        self.assignedTransmitDelaysMs = {}
+        self.assignedTransmitDelaysUs = {}
         self.modemGateway: IModem = modemGateway
         self.topology: [] = topology
-        self.nodeTwoWayTimeOfFlightMs: Dict[str, int] = {}
+        self.nodeTwoWayTimeOfFlightUs: Dict[str, int] = {}
         self.dataPacketOctetSize = 512
-        self.nodeDataPacketTransmitTimeMs = int(5 * 1e6)
-        self.guardIntervalMs = int(1 * 1e6)
+        self.nodeDataPacketTransmitTimeUs = int(5 * 1e6)
+        self.guardIntervalUs = int(1 * 1e6)
         self.timeoutPingSec = 5
         self.receivedPaquetOfCurrentReq = {}
         self.receivedPaquets = []
-        self.receivePacketTimeMs = {}
+        self.receivePacketTimeUs = {}
         self.ReceiveAllDataPacketEvent = threading.Event()
         self.timeoutDataRequestSec = 20
-        self.jitterThresholdMs = 1000
+        self.jitterThresholdUs = 100 * 1000
         self.periodeSec = int(60 * 4)
         self.running = False
         self.dataPaquetSequenceNumber = 0
@@ -35,12 +35,12 @@ class GatewayTDAMAC:
 
     def pingTopology(self):
         self.event = threading.Event()
-        self.nodeTwoWayTimeOfFlightMs = {}
+        self.nodeTwoWayTimeOfFlightUs = {}
 
         def modemCallback(pkt):
             # check if we have received a ranging ack
             if pkt.header.type == ID_PAQUET_PING and pkt.header.len > 0:
-                self.nodeTwoWayTimeOfFlightMs[pkt.header.src] = int.from_bytes(pkt.payload, 'big')
+                self.nodeTwoWayTimeOfFlightUs[pkt.header.src] = int.from_bytes(pkt.payload, 'big')
                 self.event.set()  # liberate the event to get the next node time of flight
 
         self.modemGateway.addRxCallback(modemCallback)
@@ -48,7 +48,7 @@ class GatewayTDAMAC:
         for node in self.topology:
             nb_attempts = 0
             while True:
-                self.modemGateway.send(node, GATEWAY_ID, ID_PAQUET_PING, bytearray(), FLAG_R, 0)
+                self.modemGateway.send(src=GATEWAY_ID, dst=node, type=ID_PAQUET_PING, payload=bytearray(), status=FLAG_R, dsn=0)
                 if self.event.wait(timeout=self.timeoutPingSec):
                     self.event.clear()
                     print(f"Succès de la réponse du nœud {node}")
@@ -60,30 +60,30 @@ class GatewayTDAMAC:
         self.modemGateway.removeRxCallback(modemCallback)
 
     def calculateNodesDelay(self):
-        self.assignedTransmitDelaysMs = {}
+        self.assignedTransmitDelaysUs = {}
         # transmit delay of the first node is 0
-        self.assignedTransmitDelaysMs[self.topology[0]] = 0
+        self.assignedTransmitDelaysUs[self.topology[0]] = 0
 
         for i in range(1, len(self.topology)):
-            assignedTransmitDelayPrevious = self.assignedTransmitDelaysMs[self.topology[i - 1]]
-            transmitDelayToNode = self.nodeTwoWayTimeOfFlightMs[self.topology[i]] // 2
-            transmitDelayToPreviousNode = self.nodeTwoWayTimeOfFlightMs[self.topology[i - 1]] // 2
+            assignedTransmitDelayPrevious = self.assignedTransmitDelaysUs[self.topology[i - 1]]
+            transmitDelayToNode = self.nodeTwoWayTimeOfFlightUs[self.topology[i]] // 2
+            transmitDelayToPreviousNode = self.nodeTwoWayTimeOfFlightUs[self.topology[i - 1]] // 2
 
-            self.assignedTransmitDelaysMs[self.topology[i]] = \
+            self.assignedTransmitDelaysUs[self.topology[i]] = \
                 assignedTransmitDelayPrevious + \
-                self.nodeDataPacketTransmitTimeMs + \
-                self.guardIntervalMs + \
+                self.nodeDataPacketTransmitTimeUs + \
+                self.guardIntervalUs + \
                 - 2 * (transmitDelayToNode - transmitDelayToPreviousNode)
 
     def sendAssignedTransmitDelaysToNodes(self):
         for node in self.topology:
             self.modemGateway.send(
-                node,
-                GATEWAY_ID,
-                ID_PAQUET_TDI,
-                self.assignedTransmitDelaysMs[node].to_bytes(4, 'big'),
-                0,
-                0
+                src=GATEWAY_ID,
+                dst=node,
+                type=ID_PAQUET_TDI,
+                payload=self.assignedTransmitDelaysUs[node].to_bytes(4, 'big'),
+                status=0,
+                dsn=0
             )
 
     def main(self):
@@ -91,9 +91,9 @@ class GatewayTDAMAC:
         self.running = True
         while self.running:
             self.receivedPaquetOfCurrentReq = {}
-            self.receivePacketTimeMs = {}
+            self.receivePacketTimeUs = {}
             self.ReceiveAllDataPacketEvent.clear()
-            transmitTimeMs = time.time() * 1000
+            transmitTimeUs = time.time() * 1e6 # to convert to µs
             self.RequestDataPacket()
             print("Gateway: Waiting for all data packets...")
             if self.ReceiveAllDataPacketEvent.wait(timeout=self.timeoutDataRequestSec):
@@ -112,14 +112,14 @@ class GatewayTDAMAC:
                     continue
 
                 # check if the packet arrived at the expected time
-                expectedArrivalTime = transmitTimeMs + \
-                                      self.nodeTwoWayTimeOfFlightMs[nodeId] + \
-                                      self.assignedTransmitDelaysMs[nodeId]
-                actualArrivalTime = self.receivePacketTimeMs[nodeId]
+                expectedArrivalTime = transmitTimeUs + \
+                                      self.nodeTwoWayTimeOfFlightUs[nodeId] + \
+                                      self.assignedTransmitDelaysUs[nodeId]
+                actualArrivalTime = self.receivePacketTimeUs[nodeId]
                 # TODO: Correct the diff calculation
                 diff = abs(actualArrivalTime - expectedArrivalTime)
                 print(f"Node {nodeId} error: {diff}")
-                if diff > self.jitterThresholdMs:
+                if diff > self.jitterThresholdUs:
                     # TODO: Adjust transmit delays
                     self.modemGateway.removeRxCallback(self.packetCallback)
                     self.calculateNodesDelay()
@@ -129,7 +129,7 @@ class GatewayTDAMAC:
             if not self.running:
                 break
             # wait for the next period
-            elpasedTimeSec = time.time() - (transmitTimeMs / 1000)
+            elpasedTimeSec = time.time() - (transmitTimeUs / 1000)
             time.sleep(max(self.periodeSec - elpasedTimeSec, 0))
         self.modemGateway.removeRxCallback(self.packetCallback)
 
@@ -137,7 +137,7 @@ class GatewayTDAMAC:
         # check if we have received a data packet
         if pkt.header.type == ID_PAQUET_DATA and pkt.header.dsn == self.dataPaquetSequenceNumber:
             self.receivedPaquetOfCurrentReq[pkt.header.src] = pkt
-            self.receivePacketTimeMs[pkt.header.src] = time.time() * 1000
+            self.receivePacketTimeUs[pkt.header.src] = time.time() * 1e6 # to convert to µs
             self.receivedPaquets.append(pkt)
 
             # check if we have received all data packets of the topology
@@ -153,8 +153,8 @@ class GatewayTDAMAC:
     def RequestDataPacket(self):
         self.dataPaquetSequenceNumber = (self.dataPaquetSequenceNumber + 1) % 256
         self.modemGateway.send(
-            dst=BROCAST_ADDRESS,
             src=GATEWAY_ID,
+            dst=BROCAST_ADDRESS,
             type=ID_PAQUET_REQ_DATA,
             payload=bytearray(),
             status=0,

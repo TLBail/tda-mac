@@ -8,16 +8,17 @@ import threading
 
 
 class NodeTDAMAC:
-    def __init__(self, modem: IModem):
+    def __init__(self, modem: IModem, address: int):
+        self.address = address
         self.tdiPacketEvent = None
         self.modem: IModem = modem
         self.running = False
-        self.assignedTransmitDelaysMs: int = -1
+        self.assignedTransmitDelaysUs: int = -1
         self.messageToSendQueue: Queue[bytearray] = Queue()
         self.modem.addRxCallback(self.NodeCallBack)
 
     def waitForTDIPacket(self):
-        if self.assignedTransmitDelaysMs >= 0:
+        if self.assignedTransmitDelaysUs >= 0:
             return
         self.tdiPacketEvent = threading.Event()
         self.tdiPacketEvent.wait()
@@ -25,7 +26,7 @@ class NodeTDAMAC:
 
     def NodeCallBack(self, packet):
         if packet.header.type == ID_PAQUET_TDI:
-            self.assignedTransmitDelaysMs = int.from_bytes(packet.payload, 'big')
+            self.assignedTransmitDelaysUs = int.from_bytes(packet.payload, 'big')
             if self.tdiPacketEvent is not None:
                 self.tdiPacketEvent.set()
         if packet.header.type == ID_PAQUET_REQ_DATA:
@@ -36,10 +37,10 @@ class NodeTDAMAC:
             data = self.messageToSendQueue.get()
 
             def sendAsync():
-                time.sleep(self.assignedTransmitDelaysMs * 1e-6)
+                time.sleep(self.assignedTransmitDelaysUs * 1e-6)
                 self.modem.send(
+                    src=self.address,
                     dst=GATEWAY_ID,
-                    src=1,
                     type=ID_PAQUET_DATA,
                     payload=data,
                     status=0,
@@ -48,6 +49,6 @@ class NodeTDAMAC:
             threading.Thread(target=sendAsync).start()
 
     def send(self, data: bytearray):
-        if self.assignedTransmitDelaysMs < 0:
+        if self.assignedTransmitDelaysUs < 0:
             self.waitForTDIPacket()
         self.messageToSendQueue.put(data)

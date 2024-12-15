@@ -1,7 +1,6 @@
 import threading
 import time
 import unittest
-from src.i_modem import IModem
 from src.Mock.modem_mock_node import ModemMockNode
 from src.Mock.modem_mock_gateway import ModemMockGateway
 from src.NodeTDAMAC import NodeTDAMAC
@@ -11,10 +10,11 @@ from src.constantes import ID_PAQUET_TDI, ID_PAQUET_DATA
 from src.GatewayTDAMAC import GatewayTDAMAC
 
 
-class TestModem(unittest.TestCase):
+class TestDelaiEtablie(unittest.TestCase):
     def setUp(self):
         self.modemGateway = ModemMockGateway()
         self.modemGateway.connect("COM1")
+        self.modemGateway.receive()
         self.gateway = GatewayTDAMAC(self.modemGateway, [])
 
     def initScenario1(self):
@@ -28,11 +28,11 @@ class TestModem(unittest.TestCase):
         self.modemGateway.addNode(node)
 
         # init node TDAMAC
-        self.nodeTDAMAC = NodeTDAMAC(self.nodeModem)
+        self.nodeTDAMAC = NodeTDAMAC(self.nodeModem, 1)
 
         # init network
         self.nodeModem.connect("COM1")
-        self.modemGateway.connect("COM2")
+        self.nodeModem.receive()
 
         self.gateway.pingTopology()
         self.gateway.calculateNodesDelay()
@@ -65,15 +65,17 @@ class TestModem(unittest.TestCase):
         self.modemGateway.addNode(node)
 
         # init node TDAMAC
-        self.nodeTDAMAC = NodeTDAMAC(self.nodeModem)
-        self.nodeTDAMAC2 = NodeTDAMAC(self.nodeModem2)
-        self.nodeTDAMAC3 = NodeTDAMAC(self.nodeModem3)
+        self.nodeTDAMAC = NodeTDAMAC(self.nodeModem, 1)
+        self.nodeTDAMAC2 = NodeTDAMAC(self.nodeModem2, 2)
+        self.nodeTDAMAC3 = NodeTDAMAC(self.nodeModem3, 3)
 
         # init network
         self.nodeModem.connect("COM1")
+        self.nodeModem.receive()
         self.nodeModem2.connect("COM2")
+        self.nodeModem2.receive()
         self.nodeModem3.connect("COM3")
-        self.modemGateway.connect("COM4")
+        self.nodeModem3.receive()
 
         self.gateway.pingTopology()
         self.gateway.calculateNodesDelay()

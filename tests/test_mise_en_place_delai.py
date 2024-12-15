@@ -1,17 +1,17 @@
 import unittest
 from src.Mock.modem_mock_gateway import ModemMockGateway
 from src.Mock.node_mock_gateway import NodeMockGateway
-import threading
 from src.GatewayTDAMAC import GatewayTDAMAC
 from src.NodeTDAMAC import NodeTDAMAC
 from src.Mock.modem_mock_node import ModemMockNode
 import time
 
 
-class TestGateway(unittest.TestCase):
+class TestMiseEnPlaceDelai(unittest.TestCase):
     def setUp(self):
         self.modemGateway = ModemMockGateway()
         self.modemGateway.connect("COM1")
+        self.modemGateway.receive()
         self.gateway = GatewayTDAMAC(self.modemGateway, [])
     def test_ping_topology_one_node(self):
         # init topology
@@ -22,7 +22,7 @@ class TestGateway(unittest.TestCase):
         self.modemGateway.addNode(node)
         # test
         self.gateway.pingTopology()
-        assert self.gateway.nodeTwoWayTimeOfFlightMs[1] == 2 * 1e6
+        assert self.gateway.nodeTwoWayTimeOfFlightUs[1] == 2 * 1e6
 
     def test_ping_topology_multiple_node(self):
         # init topology
@@ -41,9 +41,9 @@ class TestGateway(unittest.TestCase):
         self.modemGateway.addNode(node3)
         # test
         self.gateway.pingTopology()
-        assert self.gateway.nodeTwoWayTimeOfFlightMs[1] == 2 * 1e6
-        assert self.gateway.nodeTwoWayTimeOfFlightMs[2] == 3.5 * 1e6
-        assert self.gateway.nodeTwoWayTimeOfFlightMs[3] == 5.5 * 1e6
+        assert self.gateway.nodeTwoWayTimeOfFlightUs[1] == 2 * 1e6
+        assert self.gateway.nodeTwoWayTimeOfFlightUs[2] == 3.5 * 1e6
+        assert self.gateway.nodeTwoWayTimeOfFlightUs[3] == 5.5 * 1e6
 
     def test_calculate_assigned_transmissions_delay(self):
         # init topology
@@ -64,12 +64,12 @@ class TestGateway(unittest.TestCase):
         self.gateway.pingTopology()
         self.gateway.calculateNodesDelay()
 
-        assert self.gateway.assignedTransmitDelaysMs[1] == 0
-        print("self.gateway.assignedTransmitDelaysMs[1]" + str(self.gateway.assignedTransmitDelaysMs[1]))
-        assert self.gateway.assignedTransmitDelaysMs[2] != 0
-        print("self.gateway.assignedTransmitDelaysMs[2]" + str(self.gateway.assignedTransmitDelaysMs[2]))
-        assert self.gateway.assignedTransmitDelaysMs[3] != 0
-        print("self.gateway.assignedTransmitDelaysMs[3]" + str(self.gateway.assignedTransmitDelaysMs[3]))
+        assert self.gateway.assignedTransmitDelaysUs[1] == 0
+        print("self.gateway.assignedTransmitDelaysMs[1]" + str(self.gateway.assignedTransmitDelaysUs[1]))
+        assert self.gateway.assignedTransmitDelaysUs[2] != 0
+        print("self.gateway.assignedTransmitDelaysMs[2]" + str(self.gateway.assignedTransmitDelaysUs[2]))
+        assert self.gateway.assignedTransmitDelaysUs[3] != 0
+        print("self.gateway.assignedTransmitDelaysMs[3]" + str(self.gateway.assignedTransmitDelaysUs[3]))
 
     def test_calculate_assigned_transmissions_delay_with_packet_loss(self):
         # init topology
@@ -92,18 +92,19 @@ class TestGateway(unittest.TestCase):
         self.gateway.pingTopology()
         self.gateway.calculateNodesDelay()
 
-        assert self.gateway.assignedTransmitDelaysMs[1] == 0
-        print("self.gateway.assignedTransmitDelaysMs[1]" + str(self.gateway.assignedTransmitDelaysMs[1]))
-        assert self.gateway.assignedTransmitDelaysMs[2] != 0
-        print("self.gateway.assignedTransmitDelaysMs[2]" + str(self.gateway.assignedTransmitDelaysMs[2]))
-        assert self.gateway.assignedTransmitDelaysMs[3] != 0
-        print("self.gateway.assignedTransmitDelaysMs[3]" + str(self.gateway.assignedTransmitDelaysMs[3]))
+        assert self.gateway.assignedTransmitDelaysUs[1] == 0
+        print("self.gateway.assignedTransmitDelaysMs[1]" + str(self.gateway.assignedTransmitDelaysUs[1]))
+        assert self.gateway.assignedTransmitDelaysUs[2] != 0
+        print("self.gateway.assignedTransmitDelaysMs[2]" + str(self.gateway.assignedTransmitDelaysUs[2]))
+        assert self.gateway.assignedTransmitDelaysUs[3] != 0
+        print("self.gateway.assignedTransmitDelaysMs[3]" + str(self.gateway.assignedTransmitDelaysUs[3]))
 
 
     def test_send_assigned_transmissions_delay(self):
         # init node Modem
         self.nodeModem = ModemMockNode(1, None)
         self.nodeModem.connect("COM1")
+        self.nodeModem.receive()
 
         # init mock gateway
         self.gateway.topology = [1]
@@ -113,18 +114,18 @@ class TestGateway(unittest.TestCase):
         self.modemGateway.addNode(node)
 
         # init node TDAMAC
-        nodeTDAMAC = NodeTDAMAC(self.nodeModem)
-        assert nodeTDAMAC.assignedTransmitDelaysMs == -1
+        nodeTDAMAC = NodeTDAMAC(self.nodeModem, 1)
+        assert nodeTDAMAC.assignedTransmitDelaysUs == -1
 
         # test
         self.gateway.pingTopology()
 
-        assert self.gateway.nodeTwoWayTimeOfFlightMs[1] == 2 * 1e6
+        assert self.gateway.nodeTwoWayTimeOfFlightUs[1] == 2 * 1e6
         self.gateway.calculateNodesDelay()
-        assert self.gateway.assignedTransmitDelaysMs[1] == 0
+        assert self.gateway.assignedTransmitDelaysUs[1] == 0
         self.gateway.sendAssignedTransmitDelaysToNodes()
         time.sleep(3)  # wait for the node to receive the packet
-        assert nodeTDAMAC.assignedTransmitDelaysMs == 0
+        assert nodeTDAMAC.assignedTransmitDelaysUs == 0
 
     def test_send_tdi_packet_to_multiple_nodes(self):
         # init mocks
@@ -150,15 +151,19 @@ class TestGateway(unittest.TestCase):
         self.modemGateway.addNode(node)
 
         # init node TDAMAC
-        nodeTDAMAC = NodeTDAMAC(self.nodeModem)
-        nodeTDAMAC2 = NodeTDAMAC(self.nodeModem2)
-        nodeTDAMAC3 = NodeTDAMAC(self.nodeModem3)
+        nodeTDAMAC = NodeTDAMAC(self.nodeModem, 1)
+        nodeTDAMAC2 = NodeTDAMAC(self.nodeModem2, 2)
+        nodeTDAMAC3 = NodeTDAMAC(self.nodeModem3, 3)
 
         # init network
         self.nodeModem.connect("COM1")
+        self.nodeModem.receive()
         self.nodeModem2.connect("COM2")
+        self.nodeModem2.receive()
         self.nodeModem3.connect("COM3")
+        self.nodeModem3.receive()
         self.modemGateway.connect("COM4")
+        self.modemGateway.receive()
 
         self.gateway.pingTopology()
         self.gateway.calculateNodesDelay()
@@ -166,11 +171,11 @@ class TestGateway(unittest.TestCase):
         self.gateway.sendAssignedTransmitDelaysToNodes()
         time.sleep(3)
         # assert
-        assert nodeTDAMAC.assignedTransmitDelaysMs == 0
-        assert nodeTDAMAC2.assignedTransmitDelaysMs == \
-            self.gateway.guardIntervalMs + self.gateway.nodeDataPacketTransmitTimeMs
-        assert nodeTDAMAC3.assignedTransmitDelaysMs == \
-            nodeTDAMAC2.assignedTransmitDelaysMs + self.gateway.guardIntervalMs + self.gateway.nodeDataPacketTransmitTimeMs
+        assert nodeTDAMAC.assignedTransmitDelaysUs == 0
+        assert nodeTDAMAC2.assignedTransmitDelaysUs == \
+               self.gateway.guardIntervalUs + self.gateway.nodeDataPacketTransmitTimeUs
+        assert nodeTDAMAC3.assignedTransmitDelaysUs == \
+               nodeTDAMAC2.assignedTransmitDelaysUs + self.gateway.guardIntervalUs + self.gateway.nodeDataPacketTransmitTimeUs
 
 
 

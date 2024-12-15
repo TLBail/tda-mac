@@ -13,7 +13,9 @@ class Modem(AHOIModem, IModem):
     def addRxCallback(self, callback):
         super().addRxCallback(callback)
 
-    
+    def receive(self, thread=False):
+        super().receive(thread)
+
     def removeRxCallback(self, cb):
         super().removeRxCallback(cb)
 

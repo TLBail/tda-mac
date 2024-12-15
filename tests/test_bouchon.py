@@ -6,7 +6,7 @@ from src.Mock.modem_mock_gateway import ModemMockGateway
 from src.Mock.modem_mock_node import ModemMockNode
 from src.Mock.node_mock_gateway import NodeMockGateway
 from src.NodeTDAMAC import NodeTDAMAC
-from src.constantes import ID_PAQUET_TDI
+from src.constantes import ID_PAQUET_TDI, BROCAST_ADDRESS
 from ahoi.modem.packet import makePacket, printPacket
 from src.constantes import FLAG_R
 import time
@@ -14,22 +14,31 @@ import time
 
 class TestModem(unittest.TestCase):
     def setUp(self):
-        self.modem = ModemMockGateway()
+        self.modemGateway = ModemMockGateway()
         self.mock = Mock()
 
-    def test_connection(self):
-        self.modem.connect("COM1")
-        assert self.modem.connected
+    def test_connection_serie(self):
+        self.modemGateway.connect("COM1")
+        assert self.modemGateway.connected
+
+    def test_reception(self):
+        self.modemGateway.receive()
+        assert self.modemGateway.isReceiving
+
+    def test_nonReception(self):
+        with self.assertRaises(Exception):
+            self.modemGateway.simulateRx(makePacket())
 
     def test_sending_ack(self):
         # init
-        self.modem.addRxCallback(self.mock)
-        self.modem.connect("COM1")
+        self.modemGateway.addRxCallback(self.mock)
+        self.modemGateway.connect("COM1")
+        self.modemGateway.receive()
 
         #test
         # on simule la reception d'un packet ACK sur le modem
         packet = makePacket()
-        self.modem.simulateRx(packet)
+        self.modemGateway.simulateRx(packet)
 
         printPacket(packet)
 
@@ -37,15 +46,18 @@ class TestModem(unittest.TestCase):
         self.mock.assert_called_once_with(packet)
 
     def test_Rx_callback(self):
+        self.modemGateway.connect("COM1")
+        self.modemGateway.receive()
+
         event = threading.Event()
 
         def onModemReceive(packet):
             event.set()
 
-        node = NodeMockGateway(self.modem, 1)
+        node = NodeMockGateway(self.modemGateway, 1)
         node.transmitDelay = 1
         # test
-        self.modem.addRxCallback(onModemReceive)
+        self.modemGateway.addRxCallback(onModemReceive)
         start_time = time.time()
         node.transmit(makePacket())
         self.mock.assert_not_called()
@@ -55,10 +67,10 @@ class TestModem(unittest.TestCase):
         self.assertGreaterEqual(end_time - start_time, 1)
 
     def test_distance_measurement(self):
-        node = NodeMockGateway(self.modem, 1)
+        node = NodeMockGateway(self.modemGateway, 1)
         node.transmitDelay = 1
         node.receptionDelay = 1
-        self.modem.addNode(node)
+        self.modemGateway.addNode(node)
         event = threading.Event()
 
         def onModemReceive(pkt):
@@ -73,10 +85,11 @@ class TestModem(unittest.TestCase):
             else:
                 assert False
 
-        self.modem.addRxCallback(onModemReceive)
-        self.modem.connect("COM1")
+        self.modemGateway.addRxCallback(onModemReceive)
+        self.modemGateway.connect("COM1")
+        self.modemGateway.receive()
         # test
-        self.modem.send(dst=1, src=0, type=0x7F, payload=bytearray(), status=FLAG_R)
+        self.modemGateway.send(src=0, dst=1, type=0x7F, payload=bytearray(), status=FLAG_R, dsn=0)
         event.wait()
 
     def test_Tx_delay(self):
@@ -85,84 +98,87 @@ class TestModem(unittest.TestCase):
         def onModemReceive(modem, packet):
             event.set()
 
-        node = NodeMockGateway(self.modem, 1, onModemReceive)
+        node = NodeMockGateway(self.modemGateway, 1, onModemReceive)
         node.receptionDelay = 1
-        self.modem.addNode(node)
+        self.modemGateway.addNode(node)
         # test
-        self.modem.connect("COM1")
-        self.modem.addRxCallback(self.mock)
-        self.modem.send(1, 0, 0, b'\x00\x00\x00', 0)
+        self.modemGateway.connect("COM1")
+        self.modemGateway.receive()
+        self.modemGateway.addRxCallback(self.mock)
+        self.modemGateway.send(src=0, dst=1, type=0, payload=bytearray(), status=0, dsn=0)
         # assert
         assert len(node.receivePackets) == 0
         event.wait()
         assert len(node.receivePackets) == 1
 
     def test_multiple_node_broadcast(self):
-        self.modem.connect("COM1")
+        self.modemGateway.connect("COM1")
+        self.modemGateway.receive()
         event = threading.Event()
 
         def onNode1Receive(node, packet):
             event.set()
 
-        node = NodeMockGateway(self.modem, 1, onNode1Receive)
+        node = NodeMockGateway(self.modemGateway, 1, onNode1Receive)
         node.receptionDelay = 1
-        self.modem.addNode(node)
+        self.modemGateway.addNode(node)
         event2 = threading.Event()
 
         def onNode2Receive(node, packet):
             event2.set()
 
-        node2 = NodeMockGateway(self.modem, 2, onNode2Receive)
+        node2 = NodeMockGateway(self.modemGateway, 2, onNode2Receive)
         node2.receptionDelay = 2
-        self.modem.addNode(node2)
+        self.modemGateway.addNode(node2)
         event3 = threading.Event()
 
         def onNode3Receive(node, packet):
             event3.set()
 
-        node3 = NodeMockGateway(self.modem, 3, onNode3Receive)
+        node3 = NodeMockGateway(self.modemGateway, 3, onNode3Receive)
         node3.receptionDelay = 3
-        self.modem.addNode(node3)
+        self.modemGateway.addNode(node3)
 
         # test
-        self.modem.send(255, 0, 0, b'\x00\x00\x00', 0)
+        self.modemGateway.send(src=0, dst=BROCAST_ADDRESS, type=0, payload=bytearray(), status=0, dsn=0)
         # assert all nodes received the packet
         event.wait()
         event2.wait()
         event3.wait()
 
     def test_delay_on_multipleNodeMock(self):
-        self.modem.connect("COM1")
+        self.modemGateway.connect("COM1")
+        self.modemGateway.receive()
         event = threading.Event()
 
         def onNode1Receive(node, packet):
             event.set()
             self.timeAtReceptionNode1 = time.time()
 
-        node = NodeMockGateway(self.modem, 1, onNode1Receive)
+        node = NodeMockGateway(self.modemGateway, 1, onNode1Receive)
         node.receptionDelay = 1
-        self.modem.addNode(node)
+        self.modemGateway.addNode(node)
         event2 = threading.Event()
 
         def onNode2Receive(node, packet):
             event2.set()
             self.timeAtReceptionNode2 = time.time()
 
-        node2 = NodeMockGateway(self.modem, 2, onNode2Receive)
+        node2 = NodeMockGateway(self.modemGateway, 2, onNode2Receive)
         node2.receptionDelay = 2
-        self.modem.addNode(node2)
+        self.modemGateway.addNode(node2)
         event3 = threading.Event()
 
         def onNode3Receive(node, packet):
             event3.set()
             self.timeAtReceptionNode3 = time.time()
 
-        node3 = NodeMockGateway(self.modem, 3, onNode3Receive)
+        node3 = NodeMockGateway(self.modemGateway, 3, onNode3Receive)
         node3.receptionDelay = 3
-        self.modem.addNode(node3)
+        self.modemGateway.addNode(node3)
 
         # test
-        self.modem.send(255, 0, 0, b'\x00\x00\x00', 0)
+        self.modemGateway.send(src=0, dst=BROCAST_ADDRESS, type=0, payload=bytearray(), status=0, dsn=0)
         # assert all nodes received the packet
         event.wait()
         event2.wait()
@@ -174,19 +190,20 @@ class TestModem(unittest.TestCase):
 
 
 
-    def test_connection(self):
+    def test_connection_node(self):
         # init
         self.nodeModem = ModemMockNode(1, None)
         self.nodeModem.connect("COM1")
-        nodeTDAMAC = NodeTDAMAC(self.nodeModem)
+        self.nodeModem.receive()
+        nodeTDAMAC = NodeTDAMAC(self.nodeModem, 1)
 
         def AssertReceiveTDIPaquet():
             nodeTDAMAC.waitForTDIPacket()
-            assert nodeTDAMAC.assignedTransmitDelaysMs == 0
+            assert nodeTDAMAC.assignedTransmitDelaysUs == 0
 
         threading.Thread(target=AssertReceiveTDIPaquet).start()
         time.sleep(0.1)
-        self.nodeModem.gatewayModem.send(1, 0, ID_PAQUET_TDI, int(0).to_bytes(4, 'big'), 0, 0)
+        self.nodeModem.gatewayModem.send(src=0, dst=1, type=ID_PAQUET_TDI, payload=bytearray(), status=0, dsn=0)
 
 
 if __name__ == '__main__':
