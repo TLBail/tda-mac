@@ -2,13 +2,25 @@ from .i_modem import IModem
 import threading
 from typing import Dict
 from lib.ahoi.modem.packet import printPacket
+from src.modem import Modem
 from src.constantes import BROCAST_ADDRESS, GATEWAY_ID, ID_PAQUET_TDI, ID_PAQUET_REQ_DATA, ID_PAQUET_PING, FLAG_R, \
     ID_PAQUET_DATA
 import time
 
 
 class GatewayTDAMAC:
+    """Implementation of the TDMA MAC protocol for the gateway
+    The gateway is responsible for the synchronization of the network
+    and the transmission of data packets to the nodes.
+    """
     def __init__(self, modemGateway: IModem, topology: []):
+        """Constructor of the GatewayTDAMAC class
+
+        Args:
+            modemGateway (IModem): The modem gateway used to communicate with the nodes
+            the modem should be connected and receiving before creating the gateway
+            topology ([]): The list of nodes in the network
+        """
         self.assignedTransmitDelaysUs = {}
         self.modemGateway: IModem = modemGateway
         self.topology: [] = topology
@@ -26,6 +38,13 @@ class GatewayTDAMAC:
         self.periodeSec = int(60 * 4)
         self.running = False
         self.dataPaquetSequenceNumber = 0
+
+    @classmethod
+    def fromSerialPort(cls, serialport: str, topology: []):
+        modem = Modem()
+        modem.connect(serialport)
+        modem.receive()
+        return cls(modem, topology)
 
     def run(self):
         self.pingTopology()
@@ -102,6 +121,8 @@ class GatewayTDAMAC:
             else:
                 print("Timeout on data packets reception")
                 # TODO: handle timeout
+
+            mustRestransmitDelays = False
             for nodeId in self.topology:
                 if nodeId not in self.receivedPaquetOfCurrentReq:
                     # TODO:  if it's the first time we don't receive the data packet of node x
@@ -118,13 +139,16 @@ class GatewayTDAMAC:
                 actualArrivalTime = self.receivePacketTimeUs[nodeId]
                 # TODO: Correct the diff calculation
                 diff = abs(actualArrivalTime - expectedArrivalTime)
-                print(f"Node {nodeId} error: {diff}")
                 if diff > self.jitterThresholdUs:
+                    print(f"Node {nodeId} gigue/jitter: {diff}")
                     # TODO: Adjust transmit delays
-                    self.modemGateway.removeRxCallback(self.packetCallback)
-                    self.calculateNodesDelay()
-                    self.sendAssignedTransmitDelaysToNodes()
-                    self.modemGateway.addRxCallback(self.packetCallback)
+                    mustRestransmitDelays = True
+
+            if mustRestransmitDelays:
+                self.modemGateway.removeRxCallback(self.packetCallback)
+                self.calculateNodesDelay()
+                self.sendAssignedTransmitDelaysToNodes()
+                self.modemGateway.addRxCallback(self.packetCallback)
 
             if not self.running:
                 break
