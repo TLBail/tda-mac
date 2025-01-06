@@ -105,7 +105,7 @@ on a terminal / in a command line window. If dialout does not show up in
 the produced list, you have to add yourself to this group:
 
   ```
-  sudo usermod -a -G dialout yourUserName
+  sudo usermod -a -G dialout $USER
   ```
 
 where you must replace yourUserName by your user name. Please note that you need sudo/administrator rights for this action to succeed.
