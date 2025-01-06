@@ -3,12 +3,26 @@ from enum import Enum, auto
 from src.i_modem import IModem
 import threading
 from src.constantes import ID_PAQUET_TDI, GATEWAY_ID, ID_PAQUET_DATA, ID_PAQUET_REQ_DATA
+from src.modem import Modem
 from queue import Queue
 import threading
 
 
 class NodeTDAMAC:
+    """Implementation of the TDMA MAC protocol for the nodes
+    The nodes are responsible for the transmission of data packets to the gateway
+    and the reception of packets from the gateway.
+    """
+
     def __init__(self, modem: IModem, address: int):
+        """Constructor of the NodeTDAMAC class
+
+        Args:
+            modem (IModem): The modem used to communicate with the gateway
+            the modem should be connected and receiving before creating the node
+            address (int): The address of the node
+        """
+        # Todo: assert the modem is connected and receiving
         self.address = address
         self.tdiPacketEvent = None
         self.modem: IModem = modem
@@ -16,6 +30,13 @@ class NodeTDAMAC:
         self.assignedTransmitDelaysUs: int = -1
         self.messageToSendQueue: Queue[bytearray] = Queue()
         self.modem.addRxCallback(self.NodeCallBack)
+
+    @classmethod
+    def fromSerialPort(cls, serialport: str, topology: []):
+        modem = Modem()
+        modem.connect(serialport)
+        modem.receive()
+        return cls(modem, topology)
 
     def waitForTDIPacket(self):
         if self.assignedTransmitDelaysUs >= 0:
