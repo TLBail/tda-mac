@@ -2,64 +2,7 @@
 
 PyLib has been developed for and under Python 3.x. It has been tested with Python 3.7 and 3.8 and we recommended using the latest version of Python on Windows machines or the one that comes with your distribution on Linux. You will also need PIP to install additional libraries that are required by PyLib.
 
-  - For Ubuntu, run
-   
-    ```
-    sudo apt install python3
-    sudo apt install python3-pip
-    ```
-  	
-    in a terminal.
-  	
-  - For macOS, we strongly suggest to use Homebrew and install Python by running
-
-    ```
-    brew install python
-    ```
-  	
-    in a terminal. This will install Python and PIP.
-  
-  - For Windows, go to
-    
-    [https://www.python.org/downloads/windows/]()
-	
-    and download the latest stable release. Make sure that you tick the box during installation that adds Python to your system path. Current releases of Python for Windows contain PIP already.
-
-
-2.) Setup Python to find PyLib
-
-In order to run all apps from PyLib, you have to add the PyLib library to
-the Python library path.
-
-- For Linux and macOS, add the line
-
-    ```
-    export PYTHONPATH=${PYTHONPATH}:/path/to/pylib/lib
-    ```
-  
-  to the configuration file of your terminal (e.g., "~/.bashrc" or "~/.zshrc"). Change the path correspondingly. Please note that "/path/to/pylib" is the path to your copy of PyLib, and the trailing "/lib"
-is the lib-folder inside PyLib.
-
-  **Example**
-
-    ```
-    export PYTHONPATH=${PYTHONPATH}:~/git/ahoi/pylib/lib
-    ```
-
-  Here, PyLib is located at "git/ahoi/pylib" inside the user's home folder.
-
-- For Windows, go to system settings by the key combination "Win+Pause". Select "Advanced system settings" on the left of the opened window. Click
-the button "Environment Variables" at the very bottom and add the sytem environment variable PYTHONPATH with value
-
-  ```
-  %PYTHONPATH%;C:\Users\your\path\to\pylib\lib
-  ```
-  
-You have to replace the portion after the semicolon with the correct path to your PyLib folder (plus the addition "/lib").
-
-
-
-3.) Python lib dependencies:
+2.) Python lib dependencies:
 
 PyLib makes use of the third-party libraries listed in "requirements.txt", which have to be installed separately. We encourage the use of PIP in a virtual environment.
   
@@ -70,78 +13,11 @@ For this purpose, open a terminal window and run the following commands *inside*
   source .venv/bin/activate
   python3 -m pip install -r requirements.txt
 
-  ```
-
 If you plan to use the image transmission app, additional libraries have
 to be installed. Please edit the file "requirements.txt" in this case by
 commenting in the relevant part.
 
-Make sure to re-run
-
-  ```
-  source .venv/bin/activate
-  ```
-
-whenever you open a new terminal and want to run PyLib applications. If the virtual environment is used, it should be added to your command line prompt.
-
-You can leave the virtual environment by running 
-
-```
-deactivate
-```
-
-in the terminal.
-
-4.) Access to serial devices (Linux only)
-
-Under Linux, please ensure that your user account is member of the group
-"dialout". You can check this by typing
-
-  ```
-  groups
-  ```
-
-on a terminal / in a command line window. If dialout does not show up in
-the produced list, you have to add yourself to this group:
-
-  ```
-  sudo usermod -a -G dialout $USER
-  ```
-
-where you must replace yourUserName by your user name. Please note that you need sudo/administrator rights for this action to succeed.
-
-After completion, please log out and in again to make the change effective.
-
-
-
-5.) Running PyLib apps and selecting a serial port
-
-You should now be able to run any PyLib apps by navigating into the corresponding folder and executing the script. Most scripts will prompt you with a selection of the serial port, to which you modem is connected. It is also possible to provide the port as command line argument.
-
-A commonly used tool is the Modem Shell (MoSh), which resides in the folder of "apps/mosh". You can run it in a terminal through
-
-  ```
-  cd /path/to/pylib/apps/mosh
-  python3 mosh.py
-  ```
-
-It may be convenient to add its folder to the search path for executables. For this purpose, open the terminal configuration file (e.g., "~/.bashrc" or "~/.zshrc") and add the line
-
-  ```
-  export PATH=${PATH}:~/git/ahoi/pylib/apps/mosh
-  ```
-
-You also have to ensure that the file "mosh.py" is executable. In Linux, run
-
-  ```
-  cd /path/to/pylib/apps/mosh
-  chmod +x mosh.py
-  ```
-
-in a terminal. You can run `mosh.py` from anywhere inside a terminal.
-
-
-Windows users can install ahoi module with the following command:
+3.) Pylib dependencies
 ```
 pip install -e .
 ```
