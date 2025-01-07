@@ -22,23 +22,23 @@ class GatewayTDAMAC:
             topology ([]): The list of nodes in the network
         """
         # Todo: assert the modem is connected and receiving
-        self.assignedTransmitDelaysUs = {}
-        self.modemGateway: IModem = modemGateway
-        self.topology: [] = topology
-        self.nodeTwoWayTimeOfFlightUs: Dict[str, int] = {}
-        self.dataPacketOctetSize = 512
-        self.nodeDataPacketTransmitTimeUs = int(5 * 1e6)
-        self.guardIntervalUs = int(1 * 1e6)
-        self.timeoutPingSec = 5
-        self.receivedPaquetOfCurrentReq = {}
-        self.receivedPaquets = []
-        self.receivePacketTimeUs = {}
-        self.ReceiveAllDataPacketEvent = threading.Event()
-        self.timeoutDataRequestSec = 20
-        self.jitterThresholdUs = 100 * 1000
-        self.periodeSec = int(60 * 4)
-        self.running = False
-        self.dataPaquetSequenceNumber = 0
+        self.assignedTransmitDelaysUs = {}  # Dictionary of assigned transmission delays
+        self.modemGateway: IModem = modemGateway  # Modem used to communicate with the nodes
+        self.topology: [] = topology  # List of nodes in the network
+        self.nodeTwoWayTimeOfFlightUs: Dict[str, int] = {}  # Two-way time of flight of the nodes
+        self.dataPacketOctetSize = 512  # Size of data packets in octets
+        self.nodeDataPacketTransmitTimeUs = int(5 * 1e6)  # Transmission time of data packets from nodes in µs
+        self.guardIntervalUs = int(1 * 1e6)  # Guard interval in µs
+        self.timeoutPingSec = 5  # Timeout for ping in seconds
+        self.receivedPaquetOfCurrentReq = {}  # Packets received for the current request
+        self.receivedPaquets = []  # List of received packets
+        self.receivePacketTimeUs = {}  # Reception time of packets
+        self.ReceiveAllDataPacketEvent = threading.Event()  # Event to signal reception of all data packets
+        self.timeoutDataRequestSec = 20  # Timeout for data request in seconds
+        self.jitterThresholdUs = 100 * 1e3  # Jitter threshold in µs
+        self.periodeSec = int(60 * 4)  # Period in seconds
+        self.running = False  # Flag to indicate if the gateway is running
+        self.dataPaquetSequenceNumber = 0  # Sequence number for data packets
 
     @classmethod
     def fromSerialPort(cls, serialport: str, topology: []):
@@ -48,12 +48,52 @@ class GatewayTDAMAC:
         return cls(modem, topology)
 
     def run(self):
+        """
+        Runs the main sequence of operations for the GatewayTDAMAC.
+
+        1. Pings the network topology to gather information about the nodes.
+        2. Calculates the delay for each node in the network.
+        3. Sends the assigned transmission delays to the nodes.
+        4. Executes the main function of the GatewayTDAMAC.
+
+        Returns:
+            None
+        """
         self.pingTopology()
         self.calculateNodesDelay()
         self.sendAssignedTransmitDelaysToNodes()
         self.main()
 
     def pingTopology(self):
+        """
+        Pings all nodes in the topology to measure the two-way time of flight.
+
+        This function sends a ping packet to each node in the topology and waits for a response.
+        If a response is received within the specified timeout, the two-way time of flight is recorded.
+        If no response is received, the ping is retried until a response is received or the maximum number of attempts is reached.
+
+        Attributes:
+            event (threading.Event): Event to manage the synchronization of ping responses.
+            nodeTwoWayTimeOfFlightUs (dict): Dictionary to store the two-way time of flight for each node.
+
+        Modem Callback:
+            modemCallback(pkt): Callback function to handle incoming packets and check for ranging acknowledgments.
+
+        Process:
+            - Adds the modem callback to handle incoming packets.
+            - Iterates through each node in the topology.
+            - Sends a ping packet to the node and waits for a response.
+            - If a response is received, records the time of flight and proceeds to the next node.
+            - If no response is received, retries the ping until a response is received or the maximum number of attempts is reached.
+            - Removes the modem callback after all nodes have been pinged.
+
+        Raises:
+            None
+
+        Returns:
+            None
+        """
+
         self.event = threading.Event()
         self.nodeTwoWayTimeOfFlightUs = {}
 
@@ -80,6 +120,22 @@ class GatewayTDAMAC:
         self.modemGateway.removeRxCallback(modemCallback)
 
     def calculateNodesDelay(self):
+        """
+        Calculate the transmission delay for each node in the topology.
+
+        This method initializes the transmission delay for the first node to 0.
+        For each subsequent node, it calculates the transmission delay based on
+        the previous node's delay, the node's two-way time of flight, the data
+        packet transmission time, and the guard interval.
+
+        The calculated delays are stored in the `assignedTransmitDelaysUs` dictionary,
+        where the keys are the nodes and the values are their respective transmission delays.
+
+        Raises:
+            KeyError: If `self.topology` or `self.nodeTwoWayTimeOfFlightUs` does not contain
+                  the necessary nodes.
+        """
+
         self.assignedTransmitDelaysUs = {}
         # transmit delay of the first node is 0
         self.assignedTransmitDelaysUs[self.topology[0]] = 0
@@ -96,6 +152,12 @@ class GatewayTDAMAC:
                 - 2 * (transmitDelayToNode - transmitDelayToPreviousNode)
 
     def sendAssignedTransmitDelaysToNodes(self):
+        """
+        Send assigned transmit delays to all nodes in the topology.
+
+        This method iterates over each node in the topology and sends a message
+        containing the assigned transmit delay to each node using the modem gateway.
+        """
         for node in self.topology:
             self.modemGateway.send(
                 src=GATEWAY_ID,
@@ -107,6 +169,14 @@ class GatewayTDAMAC:
             )
 
     def main(self):
+        """
+        Main function to manage the gateway's data packet reception and transmission.
+
+        This function sets up the modem gateway to receive data packets, waits for all data packets to be received,
+        handles timeouts, checks for jitter, and retransmits delays if necessary. It runs in a loop until the
+        `self.running` flag is set to False.
+        """
+
         self.modemGateway.addRxCallback(self.packetCallback)
         self.running = True
         while self.running:
