@@ -1,23 +1,33 @@
-1.) Install Python
+# TDA-MAC
+
+## 1.) Install Python
 
 PyLib has been developed for and under Python 3.x. It has been tested with Python 3.7 and 3.8 and we recommended using the latest version of Python on Windows machines or the one that comes with your distribution on Linux. You will also need PIP to install additional libraries that are required by PyLib.
 
-2.) Python lib dependencies:
+## 2.) Python lib dependencies:
 
 PyLib makes use of the third-party libraries listed in "requirements.txt", which have to be installed separately. We encourage the use of PIP in a virtual environment.
   
 For this purpose, open a terminal window and run the following commands *inside* the folder, in which PyLib resides (i.e., execute `cd /path/to/pylib` before).
 
-  ```
-  python3 -m venv .venv
-  source .venv/bin/activate
-  python3 -m pip install -r requirements.txt
+```sh
+python3 -m venv .venv
+source .venv/bin/activate
+python3 -m pip install -r requirements.txt
+```
 
 If you plan to use the image transmission app, additional libraries have
 to be installed. Please edit the file "requirements.txt" in this case by
 commenting in the relevant part.
 
-3.) Pylib dependencies
-```
+## 3.) Pylib
+
+Dependencies : 
+```sh
 pip install -e .
+```
+
+Update the path to include the lib folder: 
+```sh
+export PYTHONPATH=${PYTHONPATH}:/path/to/lib/
 ```
