@@ -30,7 +30,7 @@ class NodeTDAMAC:
         self.running = False  # Flag to indicate if the node is running
         self.assignedTransmitDelaysUs: int = -1  # Assigned transmit delay in microseconds, -1 indicates not assigned
         self.messageToSendQueue: Queue[bytearray] = Queue()  # Queue to hold messages to be sent
-        
+
         # Register the callback function for received packets
         self.modem.addRxCallback(self.NodeCallBack)
 
@@ -54,6 +54,8 @@ class NodeTDAMAC:
     def NodeCallBack(self, packet):
         # Handle the received packet based on its type
         if packet.header.type == ID_PAQUET_TDI:
+            print("node: Received TDI packet")
+            
             # Assign the transmit delay from the packet payload
             self.assignedTransmitDelaysUs = int.from_bytes(packet.payload, 'big')
             if self.tdiPacketEvent is not None:
@@ -61,9 +63,11 @@ class NodeTDAMAC:
         if packet.header.type == ID_PAQUET_REQ_DATA:
             print("node: Received request for data")
             if self.messageToSendQueue.empty():
-                return
+                data = bytearray("Empty queue", 'utf-8')
+            else :
+                data = self.messageToSendQueue.get()
+
             print("node: Sending data..")
-            data = self.messageToSendQueue.get()
 
             def sendAsync():
                 # Wait for the assigned transmit delay before sending data
