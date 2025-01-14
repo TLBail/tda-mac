@@ -4,7 +4,7 @@ import sys
 
 
 if __name__ == '__main__':
-    if len(sys.argv) != 3:
+    if len(sys.argv) != 4:
         print(f"Usage: python3 {sys.argv[0]} <serialport> <modem_id> <gateway_id>")
         sys.exit(1)
 
