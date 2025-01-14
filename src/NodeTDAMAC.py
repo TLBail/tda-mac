@@ -2,7 +2,7 @@ import time
 from enum import Enum, auto
 from src.i_modem import IModem
 import threading
-from src.constantes import ID_PAQUET_TDI, GATEWAY_ID, ID_PAQUET_DATA, ID_PAQUET_REQ_DATA
+from src.constantes import ID_PAQUET_TDI, ID_PAQUET_DATA, ID_PAQUET_REQ_DATA
 from src.modem import Modem
 from queue import Queue
 import threading
@@ -14,7 +14,7 @@ class NodeTDAMAC:
     and the reception of packets from the gateway.
     """
 
-    def __init__(self, modem: IModem, address: int):
+    def __init__(self, modem: IModem, address: int, gatewayAddress: int = 0):
         """Constructor of the NodeTDAMAC class
 
         Args:
@@ -30,6 +30,7 @@ class NodeTDAMAC:
         self.running = False  # Flag to indicate if the node is running
         self.assignedTransmitDelaysUs: int = -1  # Assigned transmit delay in microseconds, -1 indicates not assigned
         self.messageToSendQueue: Queue[bytearray] = Queue()  # Queue to hold messages to be sent
+        self.gatewayId = gatewayAddress
 
         # Register the callback function for received packets
         self.modem.addRxCallback(self.NodeCallBack)
@@ -74,7 +75,7 @@ class NodeTDAMAC:
                 time.sleep(self.assignedTransmitDelaysUs * 1e-6)
                 self.modem.send(
                     src=self.address,
-                    dst=GATEWAY_ID,
+                    dst=self.gatewayId,
                     type=ID_PAQUET_DATA,
                     payload=data,
                     status=0,
