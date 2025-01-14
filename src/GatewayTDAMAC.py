@@ -36,7 +36,7 @@ class GatewayTDAMAC:
         self.ReceiveAllDataPacketEvent = threading.Event()  # Event to signal reception of all data packets
         self.timeoutDataRequestSec = 20  # Timeout for data request in seconds
         self.jitterThresholdUs = 100 * 1e3  # Jitter threshold in µs
-        self.periodeSec = int(60 * 4)  # Period in seconds
+        self.periodeSec = int(30)  # Period in seconds
         self.running = False  # Flag to indicate if the gateway is running
         self.dataPaquetSequenceNumber = 0  # Sequence number for data packets
         self.gatewayId = GATEWAY_ID  # Gateway address
@@ -231,6 +231,8 @@ class GatewayTDAMAC:
         self.modemGateway.removeRxCallback(self.packetCallback)
 
     def packetCallback(self, pkt):
+        if pkt.header.src == self.gatewayId:
+            return
         # check if we have received a data packet
         if pkt.header.type == ID_PAQUET_DATA and pkt.header.dsn == self.dataPaquetSequenceNumber:
             self.receivedPaquetOfCurrentReq[pkt.header.src] = pkt

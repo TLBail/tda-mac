@@ -4,6 +4,7 @@ from src.i_modem import IModem
 import threading
 from src.constantes import ID_PAQUET_TDI, ID_PAQUET_DATA, ID_PAQUET_REQ_DATA
 from src.modem import Modem
+from lib.ahoi.modem.packet import makePacket, printPacket
 from queue import Queue
 import threading
 
@@ -73,6 +74,16 @@ class NodeTDAMAC:
             def sendAsync():
                 # Wait for the assigned transmit delay before sending data
                 time.sleep(self.assignedTransmitDelaysUs * 1e-6)
+                pkt = makePacket(
+                    src=self.address,
+                    dst=self.gatewayId,
+                    type=ID_PAQUET_DATA,
+                    payload=data,
+                    dsn=packet.header.dsn
+                )
+                printPacket(pkt)
+
+
                 self.modem.send(
                     src=self.address,
                     dst=self.gatewayId,

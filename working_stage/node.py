@@ -9,6 +9,8 @@ if __name__ == '__main__':
         sys.exit(1)
 
     modem = Modem()
+    modem.transducer(5)
+    modem.txGain(10)
     modem.connect(sys.argv[1])
     modem.receive(True)
     
