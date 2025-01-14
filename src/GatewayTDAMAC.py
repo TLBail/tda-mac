@@ -101,7 +101,12 @@ class GatewayTDAMAC:
         def modemCallback(pkt):
             # check if we have received a ranging ack
             if pkt.header.type == ID_PAQUET_PING and pkt.header.len > 0:
-                self.nodeTwoWayTimeOfFlightUs[pkt.header.src] = int.from_bytes(pkt.payload, 'big')
+                tof = 0
+                # Calcul the ToF value
+                for i in range(0, 4):
+                    tof = tof * 256 + pkt.payload[i]
+
+                self.nodeTwoWayTimeOfFlightUs[pkt.header.src] = tof
                 self.event.set()  # liberate the event to get the next node time of flight
 
         self.modemGateway.addRxCallback(modemCallback)
