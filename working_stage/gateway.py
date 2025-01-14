@@ -7,6 +7,7 @@ if __name__ == '__main__':
     modemGateway.connect("COM6")
     modemGateway.receive(True)
     gateway = GatewayTDAMAC(modemGateway, [84])
+    gateway.gatewayId = 54
     # test
     gateway.run()
 

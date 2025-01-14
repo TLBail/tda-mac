@@ -39,6 +39,7 @@ class GatewayTDAMAC:
         self.periodeSec = int(60 * 4)  # Period in seconds
         self.running = False  # Flag to indicate if the gateway is running
         self.dataPaquetSequenceNumber = 0  # Sequence number for data packets
+        self.gatewayId = GATEWAY_ID  # Gateway address
 
     @classmethod
     def fromSerialPort(cls, serialport: str, topology: []):
@@ -109,7 +110,7 @@ class GatewayTDAMAC:
             nb_attempts = 0
             while True:
                 print("Gateway: Pinging node " + str(node))
-                self.modemGateway.send(src=GATEWAY_ID, dst=node, type=ID_PAQUET_PING, payload=bytearray(), status=FLAG_R, dsn=0)
+                self.modemGateway.send(src=self.gatewayId, dst=node, type=ID_PAQUET_PING, payload=bytearray(), status=FLAG_R, dsn=0)
                 if self.event.wait(timeout=self.timeoutPingSec):
                     self.event.clear()
                     print(f"Succès de la réponse du nœud {node}")
@@ -161,7 +162,7 @@ class GatewayTDAMAC:
         """
         for node in self.topology:
             self.modemGateway.send(
-                src=GATEWAY_ID,
+                src=self.gatewayId,
                 dst=node,
                 type=ID_PAQUET_TDI,
                 payload=self.assignedTransmitDelaysUs[node].to_bytes(4, 'big'),
@@ -249,7 +250,7 @@ class GatewayTDAMAC:
     def RequestDataPacket(self):
         self.dataPaquetSequenceNumber = (self.dataPaquetSequenceNumber + 1) % 256
         self.modemGateway.send(
-            src=GATEWAY_ID,
+            src=self.gatewayId,
             dst=BROCAST_ADDRESS,
             type=ID_PAQUET_REQ_DATA,
             payload=bytearray(),

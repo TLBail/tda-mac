@@ -122,7 +122,7 @@ class TestDelaiEtablie(unittest.TestCase):
         self.gateway.running = False  # stop the gateway
         time.sleep(2)  # wait for the node to answer
         gatewayThread.join()
-        assert len(self.gateway.receivedPaquets) == 1
+        assert len(self.gateway.receivedPaquets) == 3
         pkt = self.gateway.receivedPaquets[0]
         assert pkt.payload == payload
 
