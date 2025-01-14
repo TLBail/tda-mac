@@ -27,7 +27,7 @@ class GatewayTDAMAC:
         self.topology: [] = topology  # List of nodes in the network
         self.nodeTwoWayTimeOfFlightUs: Dict[str, int] = {}  # Two-way time of flight of the nodes
         self.dataPacketOctetSize = 512  # Size of data packets in octets
-        self.nodeDataPacketTransmitTimeUs = int(5 * 1e6)  # Transmission time of data packets from nodes in µs
+        self.nodeDataPacketTransmitTimeUs = int(0.32768 * 1e6) # TODO: calculer sur la base des paramètre de modulation du modem et de la taille de trame
         self.guardIntervalUs = int(1 * 1e6)  # Guard interval in µs
         self.timeoutPingSec = 5  # Timeout for ping in seconds
         self.receivedPaquetOfCurrentReq = {}  # Packets received for the current request
@@ -108,6 +108,7 @@ class GatewayTDAMAC:
         for node in self.topology:
             nb_attempts = 0
             while True:
+                print("Gateway: Pinging node " + str(node))
                 self.modemGateway.send(src=GATEWAY_ID, dst=node, type=ID_PAQUET_PING, payload=bytearray(), status=FLAG_R, dsn=0)
                 if self.event.wait(timeout=self.timeoutPingSec):
                     self.event.clear()
@@ -224,8 +225,8 @@ class GatewayTDAMAC:
             if not self.running:
                 break
             # wait for the next period
-            elpasedTimeSec = time.time() - (transmitTimeUs / 1000)
-            time.sleep(max(self.periodeSec - elpasedTimeSec, 0))
+            #elpasedTimeSec = time.time() - (transmitTimeUs / 1000)
+            time.sleep(self.periodeSec)
         self.modemGateway.removeRxCallback(self.packetCallback)
 
     def packetCallback(self, pkt):
