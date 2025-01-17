@@ -120,8 +120,7 @@ class TestDelaiEtablie(unittest.TestCase):
         # assert
         time.sleep(1)  # wait for the gateway to send the REQ packet
         self.gateway.running = False  # stop the gateway
-        time.sleep(2)  # wait for the node to answer
-        gatewayThread.join()
+        gatewayThread.join() # wait for the node to answer
         assert len(self.gateway.receivedPaquets) == 3
         pkt = self.gateway.receivedPaquets[0]
         assert pkt.payload == payload

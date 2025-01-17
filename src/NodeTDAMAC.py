@@ -4,6 +4,7 @@ from src.i_modem import IModem
 import threading
 from src.constantes import ID_PAQUET_TDI, ID_PAQUET_DATA, ID_PAQUET_REQ_DATA
 from src.modem import Modem
+from src.ModemTransmissionCalculator import ModemTransmissionCalculator
 from lib.ahoi.modem.packet import makePacket, printPacket
 from queue import Queue
 import threading
@@ -15,11 +16,17 @@ class NodeTDAMAC:
     and the reception of packets from the gateway.
     """
 
-    def __init__(self, modem: IModem, address: int, gatewayAddress: int = 0):
+    def __init__(self, modem: IModem,
+                 address: int,
+                 gatewayAddress: int = 0,
+                 dataPacketOctetSize: int = 512,
+                 transmitTimeCalc: ModemTransmissionCalculator = ModemTransmissionCalculator()
+                 ):
         """Constructor of the NodeTDAMAC class
 
         Args:
             modem (IModem): The modem used to communicate with the gateway
+            transmitTimeCalc (ModemTransmissionCalculator): The modem transmission calculator
             the modem should be connected and receiving before creating the node
             address (int): The address of the node
         """
@@ -32,6 +39,9 @@ class NodeTDAMAC:
         self.assignedTransmitDelaysUs: int = -1  # Assigned transmit delay in microseconds, -1 indicates not assigned
         self.messageToSendQueue: Queue[bytearray] = Queue()  # Queue to hold messages to be sent
         self.gatewayId = gatewayAddress
+        self.dataPacketOctetSize = dataPacketOctetSize
+        self.transmitTimeCalc = transmitTimeCalc
+        self.nodeDataPacketTransmitTimeUs = transmitTimeCalc.calculate_transmission_time(self.dataPacketOctetSize * 8)
 
         # Register the callback function for received packets
         self.modem.addRxCallback(self.NodeCallBack)

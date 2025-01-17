@@ -5,6 +5,7 @@ from lib.ahoi.modem.packet import printPacket
 from src.modem import Modem
 from src.constantes import BROCAST_ADDRESS, GATEWAY_ID, ID_PAQUET_TDI, ID_PAQUET_REQ_DATA, ID_PAQUET_PING, FLAG_R, \
     ID_PAQUET_DATA
+from src.ModemTransmissionCalculator import ModemTransmissionCalculator
 import time
 
 
@@ -13,11 +14,16 @@ class GatewayTDAMAC:
     The gateway is responsible for the synchronization of the network
     and the transmission of data packets to the nodes.
     """
-    def __init__(self, modemGateway: IModem, topology: []):
+    def __init__(self, modemGateway: IModem,
+                 topology: [],
+                 dataPacketOctetSize: int = 512,
+                 transmitTimeCalc: ModemTransmissionCalculator = ModemTransmissionCalculator()
+                 ):
         """Constructor of the GatewayTDAMAC class
 
         Args:
             modemGateway (IModem): The modem gateway used to communicate with the nodes
+            transmitTimeCalc (ModemTransmissionCalculator): The modem transmission calculator
             the modem should be connected and receiving before creating the gateway
             topology ([]): The list of nodes in the network
         """
@@ -26,15 +32,16 @@ class GatewayTDAMAC:
         self.modemGateway: IModem = modemGateway  # Modem used to communicate with the nodes
         self.topology: [] = topology  # List of nodes in the network
         self.nodeTwoWayTimeOfFlightUs: Dict[str, int] = {}  # Two-way time of flight of the nodes
-        self.dataPacketOctetSize = 512  # Size of data packets in octets
-        self.nodeDataPacketTransmitTimeUs = int(0.32768 * 1e6) # TODO: calculer sur la base des paramètre de modulation du modem et de la taille de trame
+        self.dataPacketOctetSize = dataPacketOctetSize  # Size of data packets in octets
+        self.transmitTimeCalc = transmitTimeCalc  # Modem transmission calculator
+        self.nodeDataPacketTransmitTimeUs = transmitTimeCalc.calculate_transmission_time(self.dataPacketOctetSize * 8)
         self.guardIntervalUs = int(1 * 1e6)  # Guard interval in µs
         self.timeoutPingSec = 5  # Timeout for ping in seconds
         self.receivedPaquetOfCurrentReq = {}  # Packets received for the current request
         self.receivedPaquets = []  # List of received packets
         self.receivePacketTimeUs = {}  # Reception time of packets
         self.ReceiveAllDataPacketEvent = threading.Event()  # Event to signal reception of all data packets
-        self.timeoutDataRequestSec = 20  # Timeout for data request in seconds
+        self.timeoutDataRequestSec = 5  # Timeout for data request in seconds in addition to the last node delay
         self.jitterThresholdUs = 100 * 1e3  # Jitter threshold in µs
         self.periodeSec = int(30)  # Period in seconds
         self.running = False  # Flag to indicate if the gateway is running
@@ -87,14 +94,7 @@ class GatewayTDAMAC:
             - If a response is received, records the time of flight and proceeds to the next node.
             - If no response is received, retries the ping until a response is received or the maximum number of attempts is reached.
             - Removes the modem callback after all nodes have been pinged.
-
-        Raises:
-            None
-
-        Returns:
-            None
         """
-
         self.event = threading.Event()
         self.nodeTwoWayTimeOfFlightUs = {}
 
@@ -193,7 +193,9 @@ class GatewayTDAMAC:
             transmitTimeUs = time.time() * 1e6 # to convert to µs
             self.RequestDataPacket()
             print("Gateway: Waiting for all data packets...")
-            if self.ReceiveAllDataPacketEvent.wait(timeout=self.timeoutDataRequestSec):
+            print("Gateway: Waiting for " + str(len(self.topology)) + " nodes")
+            print("Gateway: Timeout set to " + str(self.getTimeoutDataRequestSec()) + " seconds")
+            if self.ReceiveAllDataPacketEvent.wait(timeout=self.getTimeoutDataRequestSec()):
                 print("All data packets received")
                 # TODO: handle data packets
             else:
@@ -215,7 +217,6 @@ class GatewayTDAMAC:
                                       self.nodeTwoWayTimeOfFlightUs[nodeId] + \
                                       self.assignedTransmitDelaysUs[nodeId]
                 actualArrivalTime = self.receivePacketTimeUs[nodeId]
-                # TODO: Correct the diff calculation
                 diff = abs(actualArrivalTime - expectedArrivalTime)
                 if diff > self.jitterThresholdUs:
                     print(f"Node {nodeId} gigue/jitter: {diff}")
@@ -231,8 +232,10 @@ class GatewayTDAMAC:
             if not self.running:
                 break
             # wait for the next period
-            #elpasedTimeSec = time.time() - (transmitTimeUs / 1000)
-            time.sleep(self.periodeSec)
+            elpasedTimeSec = time.time() - (transmitTimeUs * 1e-6)
+            waitTimeSec = max(0, self.periodeSec - elpasedTimeSec)
+            print(f"Gateway: Waiting for {waitTimeSec} seconds before the next period")
+            time.sleep(waitTimeSec)
         self.modemGateway.removeRxCallback(self.packetCallback)
 
     def packetCallback(self, pkt):
@@ -264,3 +267,12 @@ class GatewayTDAMAC:
             status=0,
             dsn=self.dataPaquetSequenceNumber
         )
+
+    def setDataPaquetSize(self, size: int):
+        self.dataPacketOctetSize = size
+        self.nodeDataPacketTransmitTimeUs = self.transmitTimeCalc.calculate_transmission_time(self.dataPacketOctetSize * 8)
+
+    def getTimeoutDataRequestSec(self):
+        return self.timeoutDataRequestSec + \
+            (self.assignedTransmitDelaysUs[self.topology[-1]] * 1e-6) + \
+            (self.guardIntervalUs * 1e-6)
