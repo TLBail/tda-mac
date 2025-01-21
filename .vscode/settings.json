@@ -1,0 +1,21 @@
+{
+    "editor.tabSize": 4,
+    "editor.insertSpaces": true,
+    "python.testing.unittestArgs": [
+        "-v",
+        "-s",
+        "./tests",
+        "-p",
+        "test_*.py"
+    ],
+    "python.testing.pytestEnabled": false,
+    "python.testing.unittestEnabled": true,
+    "files.associations": {
+        "*.yml": "yaml"
+    },
+    "files.exclude": {
+        "**/.venv": true,
+        "**/*.egg-info": true,
+        "**/__pycache__": true,
+    }
+}
