@@ -12,7 +12,7 @@ if __name__ == '__main__':
     modemGateway.receive(True)
     modemGateway.transducer(5)
     modemGateway.txGain(10)
-    gateway = GatewayTDAMAC(modemGateway, list(map(int,sys.argv[3:])))
+    gateway = GatewayTDAMAC(modemGateway, list(map(int,sys.argv[3:])), nbReqMax=10)
     gateway.gatewayId = int(sys.argv[2])
     # test
     gateway.run()
