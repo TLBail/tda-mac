@@ -129,7 +129,7 @@ class GatewayTDAMAC:
                 if self.event.wait(timeout=self.timeoutPingSec):
                     self.event.clear()
                     # print(f"Succès de la réponse du nœud {node}")
-                    Logger.info(f"Node answered successfully {node}")
+                    Logger.info(f"Node {node} answered successfully in {self.nodeTwoWayTimeOfFlightUs[node]} us")
                     break
                 else:
                     nb_attempts += 1
