@@ -10,4 +10,12 @@
     ],
     "python.testing.pytestEnabled": false,
     "python.testing.unittestEnabled": true,
+    "files.associations": {
+        "*.yml": "yaml"
+    },
+    "files.exclude": {
+        "**/.venv": true,
+        "**/*.egg-info": true,
+        "**/__pycache__": true,
+    }
 }
