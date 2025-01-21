@@ -20,9 +20,9 @@ jobs:
           python -m pip install --upgrade pip
           pip install -r requirements.txt
 
-      - name: Setup PYTHONPATH to include ahoi lib
+      - name: Setup PYTHONPATH to include lib/
         run: |
-          export PYTHONPATH=$PYTHONPATH:$(pwd)/lib
+          echo "PYTHONPATH=$PYTHONPATH:$(pwd)/lib" >> $GITHUB_ENV
 
       - name: Run unittests
         run: |
