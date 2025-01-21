@@ -16,7 +16,7 @@ class GatewayTDAMAC:
     """
     def __init__(self, modemGateway: IModem,
                  topology: [],
-                 dataPacketOctetSize: int = 512,
+                 dataPacketOctetSize: int = 8,
                  transmitTimeCalc: ModemTransmissionCalculator = ModemTransmissionCalculator()
                  ):
         """Constructor of the GatewayTDAMAC class
