@@ -72,8 +72,14 @@ class NodeTDAMAC:
             self.assignedTransmitDelaysUs = int.from_bytes(packet.payload, 'big')
             if self.tdiPacketEvent is not None:
                 self.tdiPacketEvent.set()
+                print(f"node: Transmit delay is assigned to {self.assignedTransmitDelaysUs}µs")
         if packet.header.type == ID_PAQUET_REQ_DATA:
             print("node: Received request for data")
+            
+            if (self.assignedTransmitDelaysUs is None): 
+                print("node: Transmit delay is not assigned")
+                return
+               
             if self.messageToSendQueue.empty():
                 data = bytearray("Empty queue", 'utf-8')
             else :

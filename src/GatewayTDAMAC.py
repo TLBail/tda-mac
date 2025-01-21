@@ -17,8 +17,9 @@ class GatewayTDAMAC:
     def __init__(self, modemGateway: IModem,
                  topology: [],
                  dataPacketOctetSize: int = 8,
-                 transmitTimeCalc: ModemTransmissionCalculator = ModemTransmissionCalculator()
-                 ):
+                 transmitTimeCalc: ModemTransmissionCalculator = ModemTransmissionCalculator(),
+                 maxAttemps : int = 10,
+                ):
         """Constructor of the GatewayTDAMAC class
 
         Args:
@@ -47,6 +48,7 @@ class GatewayTDAMAC:
         self.running = False  # Flag to indicate if the gateway is running
         self.dataPaquetSequenceNumber = 0  # Sequence number for data packets
         self.gatewayId = GATEWAY_ID  # Gateway address
+        self.maxAttemps = maxAttemps  # Maximum number of attempts for ping until the node is considered unreachable (not included)
 
     @classmethod
     def fromSerialPort(cls, serialport: str, topology: []):
@@ -113,7 +115,7 @@ class GatewayTDAMAC:
 
         for node in self.topology:
             nb_attempts = 0
-            while True:
+            while nb_attempts < self.maxAttemps:
                 print("Gateway: Pinging node " + str(node))
                 self.modemGateway.send(src=self.gatewayId, dst=node, type=ID_PAQUET_PING, payload=bytearray(), status=FLAG_R, dsn=0)
                 if self.event.wait(timeout=self.timeoutPingSec):
@@ -174,6 +176,8 @@ class GatewayTDAMAC:
                 status=0,
                 dsn=0
             )
+
+            print(f"Gateway : sending delay to {node} - Assigned {self.assignedTransmitDelaysUs[node]}µs")
 
     def main(self):
         """
