@@ -9,6 +9,10 @@ from lib.ahoi.modem.packet import makePacket, printPacket
 from queue import Queue
 import threading
 
+from src.utils.Logger import Logger as L
+
+Logger = L("NODE")
+
 
 class NodeTDAMAC:
     """Implementation of the TDMA MAC protocol for the nodes
@@ -66,18 +70,23 @@ class NodeTDAMAC:
     def NodeCallBack(self, packet):
         # Handle the received packet based on its type
         if packet.header.type == ID_PAQUET_TDI:
-            print("node: Received TDI packet")
+            # print("node: Received TDI packet")
+            Logger.debug(f"Received TDI packet")
             
             # Assign the transmit delay from the packet payload
             self.assignedTransmitDelaysUs = int.from_bytes(packet.payload, 'big')
             if self.tdiPacketEvent is not None:
                 self.tdiPacketEvent.set()
-                print(f"node: Transmit delay is assigned to {self.assignedTransmitDelaysUs}µs")
+                # print(f"node: Transmit delay is assigned to {self.assignedTransmitDelaysUs}µs")
+                Logger.info(f"Transmit delay is assigned to {self.assignedTransmitDelaysUs}µs")
+
         if packet.header.type == ID_PAQUET_REQ_DATA:
-            print("node: Received request for data")
+            # print("node: Received request for data")
+            Logger.debug(f"Received request for data")
             
             if (self.assignedTransmitDelaysUs is None): 
-                print("node: Transmit delay is not assigned")
+                # print("node: Transmit delay is not assigned")
+                Logger.info(f"Transmit delay is not assigned")
                 return
                
             if self.messageToSendQueue.empty():
@@ -85,7 +94,8 @@ class NodeTDAMAC:
             else :
                 data = self.messageToSendQueue.get()
 
-            print("node: Sending data..")
+            # print("node: Sending data..")
+            Logger.info(f"Sending data..")
 
             def sendAsync():
                 # Wait for the assigned transmit delay before sending data

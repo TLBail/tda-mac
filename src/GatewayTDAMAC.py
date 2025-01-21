@@ -8,6 +8,10 @@ from src.constantes import BROCAST_ADDRESS, GATEWAY_ID, ID_PAQUET_TDI, ID_PAQUET
 from src.ModemTransmissionCalculator import ModemTransmissionCalculator
 import time
 
+from src.utils.Logger import Logger as L
+
+Logger = L("GATEWAY")
+
 
 class GatewayTDAMAC:
     """Implementation of the TDMA MAC protocol for the gateway
@@ -116,15 +120,19 @@ class GatewayTDAMAC:
         for node in self.topology:
             nb_attempts = 0
             while nb_attempts < self.maxAttemps:
-                print("Gateway: Pinging node " + str(node))
+                # print("Gateway: Pinging node " + str(node))
+
+                Logger.info(f"Pinging node {node}")
                 self.modemGateway.send(src=self.gatewayId, dst=node, type=ID_PAQUET_PING, payload=bytearray(), status=FLAG_R, dsn=0)
                 if self.event.wait(timeout=self.timeoutPingSec):
                     self.event.clear()
-                    print(f"Succès de la réponse du nœud {node}")
+                    # print(f"Succès de la réponse du nœud {node}")
+                    Logger.info(f"Node answered successfully {node}")
                     break
                 else:
                     nb_attempts += 1
-                    print(f"Tentative nb: " + str(nb_attempts) + "Aucune réponse du nœud {node}. Renvoi du paquet ")
+                    # print(f"Tentative nb: " + str(nb_attempts) + "Aucune réponse du nœud {node}. Renvoi du paquet ")
+                    Logger.debug(f"Attempt nb: {nb_attempts} No response from node {node}. Resending the packet")
 
         self.modemGateway.removeRxCallback(modemCallback)
 
@@ -177,7 +185,8 @@ class GatewayTDAMAC:
                 dsn=0
             )
 
-            print(f"Gateway : sending delay to {node} - Assigned {self.assignedTransmitDelaysUs[node]}µs")
+            # print(f"Gateway : sending delay to {node} - Assigned {self.assignedTransmitDelaysUs[node]}µs")
+            Logger.info(f"Gateway : sending delay to {node} - Assigned {self.assignedTransmitDelaysUs[node]}µs")
 
     def main(self):
         """
@@ -196,14 +205,20 @@ class GatewayTDAMAC:
             self.ReceiveAllDataPacketEvent.clear()
             transmitTimeUs = time.time() * 1e6 # to convert to µs
             self.RequestDataPacket()
-            print("Gateway: Waiting for all data packets...")
-            print("Gateway: Waiting for " + str(len(self.topology)) + " nodes")
-            print("Gateway: Timeout set to " + str(self.getTimeoutDataRequestSec()) + " seconds")
+            # print("Gateway: Waiting for all data packets...")
+            # print("Gateway: Waiting for " + str(len(self.topology)) + " nodes")
+            # print("Gateway: Timeout set to " + str(self.getTimeoutDataRequestSec()) + " seconds")
+
+            Logger.debug("Gateway: Waiting for all data packets...")
+            Logger.debug(f"Gateway: Waiting for {len(self.topology)} nodes")
+            Logger.debug(f"Gateway: Timeout set to {self.getTimeoutDataRequestSec()} seconds")
             if self.ReceiveAllDataPacketEvent.wait(timeout=self.getTimeoutDataRequestSec()):
-                print("All data packets received")
+                # print("All data packets received")
+                Logger.debug("All data packets received")
                 # TODO: handle data packets
             else:
-                print("Timeout on data packets reception")
+                # print("Timeout on data packets reception")
+                Logger.error("Timeout on data packets reception")
                 # TODO: handle timeout
 
             mustRestransmitDelays = False
@@ -223,7 +238,8 @@ class GatewayTDAMAC:
                 actualArrivalTime = self.receivePacketTimeUs[nodeId]
                 diff = abs(actualArrivalTime - expectedArrivalTime)
                 if diff > self.jitterThresholdUs:
-                    print(f"Node {nodeId} gigue/jitter: {diff}")
+                    # print(f"Node {nodeId} gigue/jitter: {diff}")
+                    Logger.warning(f"Node {nodeId} gigue/jitter: {diff}")
                     # TODO: Adjust transmit delays
                     mustRestransmitDelays = True
 
@@ -238,7 +254,8 @@ class GatewayTDAMAC:
             # wait for the next period
             elpasedTimeSec = time.time() - (transmitTimeUs * 1e-6)
             waitTimeSec = max(0, self.periodeSec - elpasedTimeSec)
-            print(f"Gateway: Waiting for {waitTimeSec} seconds before the next period")
+            # print(f"Gateway: Waiting for {waitTimeSec} seconds before the next period")
+            Logger.debug(f"Gateway: Waiting for {waitTimeSec} seconds before the next period")
             time.sleep(waitTimeSec)
         self.modemGateway.removeRxCallback(self.packetCallback)
 
@@ -255,9 +272,11 @@ class GatewayTDAMAC:
             if len(self.receivedPaquetOfCurrentReq) == len(self.topology):
                 self.ReceiveAllDataPacketEvent.set()
         elif pkt.header.type == ID_PAQUET_DATA:
-            print("Received packet with wrong data sequence number")
+            # print("Received packet with wrong data sequence number")
+            Logger.error("Received packet with wrong data sequence number")
         else:
-            print("Received packet with unknown type")
+            # print("Received packet with unknown type")
+            Logger.warning("Received packet with unknown type")
             printPacket(pkt)
         pass
 
