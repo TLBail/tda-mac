@@ -55,6 +55,10 @@ class GatewayTDAMAC:
         self.gatewayId = GATEWAY_ID  # Gateway address
         self.maxAttemps = maxAttemps  # Maximum number of attempts for ping until the node is considered unreachable (not included)
 
+        # temporary variables
+        self.receivedTime = -1
+        self.expectedNodeAdress = -1
+
     @classmethod
     def fromSerialPort(cls, serialport: str, topology: []):
         modem = Modem()
@@ -109,12 +113,14 @@ class GatewayTDAMAC:
         self.event = threading.Event()
         self.nodeTwoWayTimeOfFlightUs = {}
 
-        expectedNodeAdress = self.topology[0]
+        self.expectedNodeAdress = self.topology[0]
+        self.receivedTime = -1
 
         def modemCallback(pkt):
             # check if we have received a ranging ack
             if pkt.header.type == ID_PAQUET_PING and pkt.header.len > 0 \
-                    and pkt.header.src == expectedNodeAdress:
+                    and pkt.header.src == self.expectedNodeAdress:
+                self.receivedTime = time.time_ns()
                 tof = 0
                 # Calcul the ToF value
                 for i in range(0, 4):
@@ -123,22 +129,25 @@ class GatewayTDAMAC:
                 self.nodeTwoWayTimeOfFlightUs[pkt.header.src] = tof
                 self.event.set()  # liberate the event to get the next node time of flight
 
-                Logger.debug(f"Node {pkt.header.src} two-way time of flight (PING PAQUET): {tof} µs", pkt)
-
         self.modemGateway.addRxCallback(modemCallback)
 
         for node in self.topology:
             nb_attempts = 0
-            expectedNodeAdress = node
+            self.expectedNodeAdress = node
             while True:
                 # print("Gateway: Pinging node " + str(node))
 
                 Logger.info(f"Pinging node {node}")
+                self.receivedTime = -1
+                pingSendTimeNs = time.time_ns()
                 self.modemGateway.send(src=self.gatewayId, dst=node, type=ID_PAQUET_PING, payload=bytearray(), status=FLAG_R, dsn=0)
                 if self.event.wait(timeout=self.timeoutPingSec):
                     self.event.clear()
                     # print(f"Succès de la réponse du nœud {node}")
-                    Logger.info(f"Node {node} answered successfully in {self.nodeTwoWayTimeOfFlightUs[node]} µs")
+                    if self.receivedTime == -1:
+                        raise Exception("Received time is not set")
+                    timeOfFlightEndToEnd = self.receivedTime - pingSendTimeNs
+                    Logger.info(f"Node {node} answered successfully in {self.nodeTwoWayTimeOfFlightUs[node] * 1e-3} ms and E2E {timeOfFlightEndToEnd * 1e-6} ms")
                     break
                 else:
                     nb_attempts += 1
@@ -225,7 +234,7 @@ class GatewayTDAMAC:
             self.receivedPaquetOfCurrentReq = {}
             self.receivePacketTimeUs = {}
             self.ReceiveAllDataPacketEvent.clear()
-            transmitTimeUs = time.time() * 1e6 # to convert to µs
+            transmitTimeUs = time.time_ns() * 1e-3 # to convert to µs
             self.RequestDataPacket()
             # print("Gateway: Waiting for all data packets...")
             # print("Gateway: Waiting for " + str(len(self.topology)) + " nodes")
