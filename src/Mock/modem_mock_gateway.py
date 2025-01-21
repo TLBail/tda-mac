@@ -28,7 +28,7 @@ class ModemMockGateway(IModem):
         pkt = makePacket(src, dst, type, status, dsn, payload)
         if not self.connected:
             raise Exception("Modem not connected")
-        print(f"Mock: Sent packet to {dst} with payload {payload}")
+        print(f"Mock: Sending packet to {dst} with payload {payload}")
         if dst == BROCAST_ADDRESS:
             for node in self.nodes.values():
                 node.receive(pkt)

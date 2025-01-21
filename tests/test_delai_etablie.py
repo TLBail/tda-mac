@@ -107,6 +107,8 @@ class TestDelaiEtablie(unittest.TestCase):
         # test
         payload = int(10).to_bytes(4, 'big')
         self.nodeTDAMAC.setReponsePayload(payload)  # add the message to the queue
+        self.nodeTDAMAC2.setReponsePayload(payload)
+        self.nodeTDAMAC3.setReponsePayload(payload)
 
         def StartGatewayMainLoop():
             self.gateway.main()  # send the REQ DATA packet to the nodes
@@ -141,6 +143,65 @@ class TestDelaiEtablie(unittest.TestCase):
         node.transmit(makePacket(src=1, dst=0, type=ID_PAQUET_DATA, payload=bytearray(), ack=0, dsn=0))
         time.sleep(self.gateway.timeoutDataRequestSec + 1) # wait for the timeout
         assert len(self.gateway.receivedPaquetOfCurrentReq) == 0
+
+
+    def test_unresponding_node(self):
+        print("initScenario2")
+        # init mocks
+        # gateway
+        self.gateway.topology = [1, 2, 3]
+        # node 1
+        self.nodeModem = ModemMockNode(1, self.modemGateway)
+        node = NodeMockGateway(self.modemGateway, 1, lambda node, pkt: self.nodeModem.simulateRx(pkt))
+        node.transmitDelay = 0.1
+        node.receptionDelay = 0.1
+        self.modemGateway.addNode(node)
+        # node 2
+        self.nodeModem2 = ModemMockNode(2, self.modemGateway)
+        node = NodeMockGateway(self.modemGateway, 2, lambda node, pkt: self.nodeModem2.simulateRx(pkt))
+        node.transmitDelay = 0.2
+        node.receptionDelay = 0.2
+        self.modemGateway.addNode(node)
+        # node 3
+        self.nodeModem3 = ModemMockNode(3, self.modemGateway)
+        node = NodeMockGateway(self.modemGateway, 3, lambda node, pkt: self.nodeModem3.simulateRx(pkt))
+        node.looseReceivePacket = True
+        self.modemGateway.addNode(node)
+
+        # init node TDAMAC
+        self.nodeTDAMAC = NodeTDAMAC(self.nodeModem, 1)
+        self.nodeTDAMAC2 = NodeTDAMAC(self.nodeModem2, 2)
+        self.nodeTDAMAC3 = NodeTDAMAC(self.nodeModem3, 3)
+
+        # init network
+        self.nodeModem.connect("COM1")
+        self.nodeModem.receive()
+        self.nodeModem2.connect("COM2")
+        self.nodeModem2.receive()
+        self.nodeModem3.connect("COM3")
+        self.nodeModem3.receive()
+
+        self.gateway.pingTopology()
+        self.gateway.calculateNodesDelay()
+        self.gateway.sendAssignedTransmitDelaysToNodes()
+        print("initScenario2 done")
+        # test
+        payload = int(10).to_bytes(4, 'big')
+        self.nodeTDAMAC.setReponsePayload(payload)  # add the message to the queue
+        def StartGatewayMainLoop():
+            self.gateway.main()  # send the REQ DATA packet to the nodes
+
+        gatewayThread = threading.Thread(target=StartGatewayMainLoop)
+        gatewayThread.start()
+        time.sleep(1)  # wait for the gateway to send the REQ packet
+        self.gateway.running = False  # stop the gateway
+        gatewayThread.join()
+        assert len(self.gateway.receivedPaquets) == 2
+        pkt = self.gateway.receivedPaquets[0]
+        assert pkt.payload == payload
+
+
+
 
 if __name__ == '__main__':
     unittest.main()

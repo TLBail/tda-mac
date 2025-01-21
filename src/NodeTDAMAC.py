@@ -79,10 +79,9 @@ class NodeTDAMAC:
             
             # Assign the transmit delay from the packet payload
             self.assignedTransmitDelaysUs = int.from_bytes(packet.payload, 'big')
+            Logger.info(f"Transmit delay is assigned to {self.assignedTransmitDelaysUs}µs")
             if self.tdiPacketEvent is not None:
                 self.tdiPacketEvent.set()
-                # print(f"node: Transmit delay is assigned to {self.assignedTransmitDelaysUs}µs")
-                Logger.info(f"Transmit delay is assigned to {self.assignedTransmitDelaysUs}µs")
 
         if packet.header.type == ID_PAQUET_REQ_DATA:
             # print("node: Received request for data")
@@ -98,7 +97,7 @@ class NodeTDAMAC:
 
             def sendAsync():
                 # Wait for the assigned transmit delay before sending data
-                time.sleep(self.assignedTransmitDelaysUs * 1e-6)
+                time.sleep(max(self.assignedTransmitDelaysUs * 1e-6, 0))
                 pkt = makePacket(
                     src=self.address,
                     dst=self.gatewayId,

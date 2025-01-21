@@ -122,7 +122,7 @@ class GatewayTDAMAC:
 
         for node in self.topology:
             nb_attempts = 0
-            while nb_attempts < self.maxAttemps:
+            while True:
                 # print("Gateway: Pinging node " + str(node))
 
                 Logger.info(f"Pinging node {node}")
@@ -135,7 +135,14 @@ class GatewayTDAMAC:
                 else:
                     nb_attempts += 1
                     # print(f"Tentative nb: " + str(nb_attempts) + "Aucune réponse du nœud {node}. Renvoi du paquet ")
-                    Logger.debug(f"Attempt nb: {nb_attempts} No response from node {node}. Resending the packet")
+                    if nb_attempts >= self.maxAttemps:
+                        Logger.error(f"No response from node {node}. "
+                                     f"Maximum number of attempts reached. "
+                                     f"Removing node from topology")
+                        self.topology.remove(node)
+                        break
+                    else:
+                        Logger.warning(f"Attempt nb: {nb_attempts} No response from node {node}. Resending the packet")
 
         self.modemGateway.removeRxCallback(modemCallback)
 
