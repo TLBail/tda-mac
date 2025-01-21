@@ -1,4 +1,5 @@
 from datetime import datetime
+from smtplib import bCRLF
 import time
 from enum import Enum
 from lib.ahoi.modem.packet import packet2HexString
@@ -42,6 +43,7 @@ class Logger:
             )
         )
         output += ")"
+        print(f"{bcolors.UNDERLINE}{output}{bcolors.ENDC}")
 
         with open(f"logs/{self.logname}.log", "a") as f:
             f.write(output + "\n")
