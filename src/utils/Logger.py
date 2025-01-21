@@ -23,7 +23,7 @@ LOGLEVELS = Enum('LOGLEVELS', [('DEBUG', bcolors.OKCYAN), ('INFO',bcolors.OKBLUE
 class Logger:
     def __init__(self, title: str):
         self.title = title
-        self.logname = datetime.now().strftime("%Y-%m-%d_%H:%M:%S")
+        self.logname = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
     def __printRxRax(self, pkt):
         os.makedirs("logs", exist_ok=True)
