@@ -4,7 +4,7 @@ import unittest
 from src.Mock.modem_mock_node import ModemMockNode
 from src.Mock.modem_mock_gateway import ModemMockGateway
 from src.NodeTDAMAC import NodeTDAMAC
-from src.Mock.node_mock_gateway import NodeMockGateway, ResponseWithAckForDelay
+from src.Mock.node_mock_gateway import NodeMockGateway
 from lib.ahoi.modem.packet import makePacket
 from src.constantes import ID_PAQUET_TDI, ID_PAQUET_DATA
 from src.GatewayTDAMAC import GatewayTDAMAC
@@ -87,8 +87,7 @@ class TestDelaiEtablie(unittest.TestCase):
         self.initScenario1()
         # test
         payload = int(10).to_bytes(4, 'big')
-        self.nodeTDAMAC.send(payload)  # add the message to the queue
-        assert self.nodeTDAMAC.messageToSendQueue.qsize() == 1
+        self.nodeTDAMAC.setReponsePayload(payload)  # add the message to the queue
 
         def StartGatewayMainLoop():
             self.gateway.main()  # send the REQ DATA packet to the nodes
@@ -98,8 +97,6 @@ class TestDelaiEtablie(unittest.TestCase):
 
         time.sleep(1)  # wait for the gateway to send the REQ packet
         self.gateway.running = False  # stop the gateway
-        time.sleep(2)  # wait for the node to answer
-        assert self.nodeTDAMAC.messageToSendQueue.qsize() == 0
         gatewayThread.join()
         assert len(self.gateway.receivedPaquets) == 1
         pkt = self.gateway.receivedPaquets[0]
@@ -109,7 +106,7 @@ class TestDelaiEtablie(unittest.TestCase):
         self.initScenario2()
         # test
         payload = int(10).to_bytes(4, 'big')
-        self.nodeTDAMAC.send(payload)  # add the message to the queue
+        self.nodeTDAMAC.setReponsePayload(payload)  # add the message to the queue
 
         def StartGatewayMainLoop():
             self.gateway.main()  # send the REQ DATA packet to the nodes

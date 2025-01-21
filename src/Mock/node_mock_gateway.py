@@ -33,15 +33,15 @@ class NodeMockGateway:
     def transmit(self, packet):
         if(self.looseNbTransmitPacket > 0):
             self.looseNbTransmitPacket -= 1
-            print(f"Node {self.adress} lost packet while transmitting")
+            print(f"Mock: Node {self.adress} lost packet while transmitting")
             return
         if(self.looseTransmitPacket):
-            print(f"Node {self.adress} lost packet while transmitting")
+            print(f"Mock: Node {self.adress} lost packet while transmitting")
             return
         def asyncTransmit():
-            print(f"Node {self.adress} is transmitting packet")
+            print(f"Mock: Node {self.adress} is transmitting packet")
             time.sleep(self.transmitDelay)
-            print(f"Node {self.adress} transmitted packet")
+            print(f"Mock: Node {self.adress} transmitted packet")
             self.modem.simulateRx(packet)
 
         threading.Thread(target=asyncTransmit).start()
@@ -49,16 +49,16 @@ class NodeMockGateway:
     def receive(self, packet):
         if(self.looseNbReceivePacket > 0):
             self.looseNbReceivePacket -= 1
-            print(f"Node {self.adress} lost packet while receiving")
+            print(f"Mock: Node {self.adress} lost packet while receiving")
             return
         if(self.looseReceivePacket):
-            print(f"Node {self.adress} lost packet while receiving")
+            print(f"Mock: Node {self.adress} lost packet while receiving")
             return
         def asyncReceive():
-            print(f"Node {self.adress} is receiving packet")
+            print(f"Mock: Node {self.adress} is receiving packet")
             time.sleep(self.receptionDelay)
             self.receivePackets.append(packet)
-            print(f"Node {self.adress} received packet")
+            print(f"Mock: Node {self.adress} received packet")
             if (packet.header.status & FLAG_R) > 0:
                 ResponseWithAckForDelay(self, packet)
             if self.onReceive is not None:

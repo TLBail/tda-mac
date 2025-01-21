@@ -177,7 +177,48 @@ class TestMiseEnPlaceDelai(unittest.TestCase):
         assert nodeTDAMAC3.assignedTransmitDelaysUs == \
                nodeTDAMAC2.assignedTransmitDelaysUs + self.gateway.guardIntervalUs + self.gateway.nodeDataPacketTransmitTimeUs
 
+    def test_scheduling_beacon(self):
+        # init mocks
+        # gateway
+        self.gateway.topology = [3, 1, 2]
+        # node 1
+        self.nodeModem = ModemMockNode(1, self.modemGateway)
+        node = NodeMockGateway(self.modemGateway, 1, lambda node, pkt: self.nodeModem.simulateRx(pkt))
+        node.transmitDelay = 0.1
+        node.receptionDelay = 0.1
+        self.modemGateway.addNode(node)
+        # node 2
+        self.nodeModem2 = ModemMockNode(2, self.modemGateway)
+        node = NodeMockGateway(self.modemGateway, 2, lambda node, pkt: self.nodeModem2.simulateRx(pkt))
+        node.transmitDelay = 0.2
+        node.receptionDelay = 0.2
+        self.modemGateway.addNode(node)
+        # node 3
+        self.nodeModem3 = ModemMockNode(3, self.modemGateway)
+        node = NodeMockGateway(self.modemGateway, 3, lambda node, pkt: self.nodeModem3.simulateRx(pkt))
+        node.transmitDelay = 0.3
+        node.receptionDelay = 0.3
+        self.modemGateway.addNode(node)
 
+        # init node TDAMAC
+        self.nodeTDAMAC = NodeTDAMAC(self.nodeModem, 1)
+        self.nodeTDAMAC2 = NodeTDAMAC(self.nodeModem2, 2)
+        self.nodeTDAMAC3 = NodeTDAMAC(self.nodeModem3, 3)
+
+        # init network
+        self.nodeModem.connect("COM1")
+        self.nodeModem.receive()
+        self.nodeModem2.connect("COM2")
+        self.nodeModem2.receive()
+        self.nodeModem3.connect("COM3")
+        self.nodeModem3.receive()
+
+        self.gateway.pingTopology()
+        self.gateway.calculateNodesDelay()
+
+        assert self.gateway.assignedTransmitDelaysUs[1] == 0
+        assert self.gateway.assignedTransmitDelaysUs[2] >= self.gateway.assignedTransmitDelaysUs[1]
+        assert self.gateway.assignedTransmitDelaysUs[3] >= self.gateway.assignedTransmitDelaysUs[2]
 
 
 if __name__ == '__main__':

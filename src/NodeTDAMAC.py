@@ -24,7 +24,8 @@ class NodeTDAMAC:
                  address: int,
                  gatewayAddress: int = 0,
                  dataPacketOctetSize: int = 8,
-                 transmitTimeCalc: ModemTransmissionCalculator = ModemTransmissionCalculator()
+                 transmitTimeCalc: ModemTransmissionCalculator = ModemTransmissionCalculator(),
+                 responsePayload: bytearray = bytearray("no payload", 'utf-8')
                  ):
         """Constructor of the NodeTDAMAC class
 
@@ -41,11 +42,11 @@ class NodeTDAMAC:
         self.modem: IModem = modem  # Modem instance for communication
         self.running = False  # Flag to indicate if the node is running
         self.assignedTransmitDelaysUs: int = -1  # Assigned transmit delay in microseconds, -1 indicates not assigned
-        self.messageToSendQueue: Queue[bytearray] = Queue()  # Queue to hold messages to be sent
         self.gatewayId = gatewayAddress
         self.dataPacketOctetSize = dataPacketOctetSize
         self.transmitTimeCalc = transmitTimeCalc
         self.nodeDataPacketTransmitTimeUs = transmitTimeCalc.calculate_transmission_time(self.dataPacketOctetSize * 8)
+        self.responsePayload = responsePayload
 
         # Register the callback function for received packets
         self.modem.addRxCallback(self.NodeCallBack)
@@ -58,6 +59,9 @@ class NodeTDAMAC:
         modem.receive()
         # Return an instance of NodeTDAMAC
         return cls(modem, topology)
+
+    def setReponsePayload(self, payload: bytearray):
+        self.responsePayload = payload
 
     def waitForTDIPacket(self):
         # Wait for the TDI packet if the transmit delay is not assigned
@@ -88,11 +92,6 @@ class NodeTDAMAC:
                 # print("node: Transmit delay is not assigned")
                 Logger.info(f"Transmit delay is not assigned")
                 return
-               
-            if self.messageToSendQueue.empty():
-                data = bytearray("Empty queue", 'utf-8')
-            else :
-                data = self.messageToSendQueue.get()
 
             # print("node: Sending data..")
             Logger.info(f"Sending data..")
@@ -104,7 +103,7 @@ class NodeTDAMAC:
                     src=self.address,
                     dst=self.gatewayId,
                     type=ID_PAQUET_DATA,
-                    payload=data,
+                    payload=self.responsePayload,
                     dsn=packet.header.dsn
                 )
                 printPacket(pkt)
@@ -116,16 +115,9 @@ class NodeTDAMAC:
                     src=self.address,
                     dst=self.gatewayId,
                     type=ID_PAQUET_DATA,
-                    payload=data,
+                    payload=self.responsePayload,
                     status=0,
                     dsn=packet.header.dsn
                 )
             # Send data asynchronously
             threading.Thread(target=sendAsync).start()
-
-    def send(self, data: bytearray):
-        # Wait for the TDI packet if the transmit delay is not assigned
-        if self.assignedTransmitDelaysUs < 0:
-            self.waitForTDIPacket()
-        # Add the data to the send queue
-        self.messageToSendQueue.put(data)

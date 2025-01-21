@@ -33,7 +33,6 @@ class GatewayTDAMAC:
             the modem should be connected and receiving before creating the gateway
             topology ([]): The list of nodes in the network
         """
-        # Todo: assert the modem is connected and receiving
         self.assignedTransmitDelaysUs = {}  # Dictionary of assigned transmission delays
         self.modemGateway: IModem = modemGateway  # Modem used to communicate with the nodes
         self.topology: [] = topology  # List of nodes in the network
