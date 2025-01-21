@@ -4,6 +4,7 @@ from src.Mock.node_mock_gateway import NodeMockGateway
 from src.GatewayTDAMAC import GatewayTDAMAC
 from src.NodeTDAMAC import NodeTDAMAC
 from src.Mock.modem_mock_node import ModemMockNode
+from src.Mock.node_mock_gateway import ResponseWithAckForDelay
 import time
 
 
@@ -258,6 +259,44 @@ class TestMiseEnPlaceDelai(unittest.TestCase):
         self.gateway.pingTopology()
 
         assert self.gateway.topology == [1, 2]
+
+    def test_ping_topology_with_echo(self):
+        # init mocks
+        # gateway
+        self.gateway.topology = [1, 2]
+
+        def nodeWithEcho(node, pkt):
+            self.nodeModem.simulateRx(pkt)
+            time.sleep(1)
+            ResponseWithAckForDelay(node, pkt)
+        # node 1
+        self.nodeModem = ModemMockNode(1, self.modemGateway)
+        node = NodeMockGateway(self.modemGateway, 1, nodeWithEcho)
+        node.transmitDelay = 1
+        node.receptionDelay = 1
+        self.modemGateway.addNode(node)
+        # node 2
+        self.nodeModem2 = ModemMockNode(2, self.modemGateway)
+        node = NodeMockGateway(self.modemGateway, 2, lambda node, pkt: self.nodeModem2.simulateRx(pkt))
+        node.looseReceivePacket = True
+        self.modemGateway.addNode(node)
+
+        # init node TDAMAC
+        self.nodeTDAMAC = NodeTDAMAC(self.nodeModem, 1)
+        self.nodeTDAMAC2 = NodeTDAMAC(self.nodeModem2, 2)
+
+        # init network
+        self.nodeModem.connect("COM1")
+        self.nodeModem.receive()
+        self.nodeModem2.connect("COM2")
+        self.nodeModem2.receive()
+
+        #Test
+        self.gateway.pingTopology()
+
+        #Assert
+        assert self.gateway.topology == [1]
+
 
 if __name__ == '__main__':
     unittest.main()

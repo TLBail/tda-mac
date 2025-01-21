@@ -74,7 +74,11 @@ class GatewayTDAMAC:
         Returns:
             None
         """
+        if len(self.topology) == 0:
+            raise ValueError("Topology is empty")
         self.pingTopology()
+        if len(self.topology) == 0:
+            raise ValueError("Topology is empty")
         self.calculateNodesDelay()
         self.sendAssignedTransmitDelaysToNodes()
         self.main()
@@ -105,9 +109,12 @@ class GatewayTDAMAC:
         self.event = threading.Event()
         self.nodeTwoWayTimeOfFlightUs = {}
 
+        expectedNodeAdress = self.topology[0]
+
         def modemCallback(pkt):
             # check if we have received a ranging ack
-            if pkt.header.type == ID_PAQUET_PING and pkt.header.len > 0:
+            if pkt.header.type == ID_PAQUET_PING and pkt.header.len > 0 \
+                    and pkt.header.src == expectedNodeAdress:
                 tof = 0
                 # Calcul the ToF value
                 for i in range(0, 4):
@@ -122,6 +129,7 @@ class GatewayTDAMAC:
 
         for node in self.topology:
             nb_attempts = 0
+            expectedNodeAdress = node
             while True:
                 # print("Gateway: Pinging node " + str(node))
 
