@@ -16,8 +16,9 @@ class GatewayTDAMAC:
     """
     def __init__(self, modemGateway: IModem,
                  topology: [],
-                 dataPacketOctetSize: int = 512,
-                 transmitTimeCalc: ModemTransmissionCalculator = ModemTransmissionCalculator()
+                 dataPacketOctetSize: int = 8,
+                 transmitTimeCalc: ModemTransmissionCalculator = ModemTransmissionCalculator(),
+                 nbReqMax: int = -1
                  ):
         """Constructor of the GatewayTDAMAC class
 
@@ -35,15 +36,16 @@ class GatewayTDAMAC:
         self.dataPacketOctetSize = dataPacketOctetSize  # Size of data packets in octets
         self.transmitTimeCalc = transmitTimeCalc  # Modem transmission calculator
         self.nodeDataPacketTransmitTimeUs = transmitTimeCalc.calculate_transmission_time(self.dataPacketOctetSize * 8)
-        self.guardIntervalUs = int(1 * 1e6)  # Guard interval in µs
+        self.guardIntervalUs = int(2 * 1e6)  # Guard interval in µs
         self.timeoutPingSec = 5  # Timeout for ping in seconds
         self.receivedPaquetOfCurrentReq = {}  # Packets received for the current request
+        self.nbReqMax = nbReqMax  # Maximum number of requests
         self.receivedPaquets = []  # List of received packets
         self.receivePacketTimeUs = {}  # Reception time of packets
         self.ReceiveAllDataPacketEvent = threading.Event()  # Event to signal reception of all data packets
         self.timeoutDataRequestSec = 5  # Timeout for data request in seconds in addition to the last node delay
         self.jitterThresholdUs = 100 * 1e3  # Jitter threshold in µs
-        self.periodeSec = int(30)  # Period in seconds
+        self.periodeSec = int(20)  # Period in seconds
         self.running = False  # Flag to indicate if the gateway is running
         self.dataPaquetSequenceNumber = 0  # Sequence number for data packets
         self.gatewayId = GATEWAY_ID  # Gateway address
@@ -145,8 +147,8 @@ class GatewayTDAMAC:
 
         self.assignedTransmitDelaysUs = {}
         # transmit delay of the first node is 0
+        self.topology.sort(key=lambda x: self.nodeTwoWayTimeOfFlightUs[x])
         self.assignedTransmitDelaysUs[self.topology[0]] = 0
-
         for i in range(1, len(self.topology)):
             assignedTransmitDelayPrevious = self.assignedTransmitDelaysUs[self.topology[i - 1]]
             transmitDelayToNode = self.nodeTwoWayTimeOfFlightUs[self.topology[i]] // 2
@@ -186,7 +188,11 @@ class GatewayTDAMAC:
 
         self.modemGateway.addRxCallback(self.packetCallback)
         self.running = True
+        nbReq = 0
         while self.running:
+            if self.nbReqMax != -1 and nbReq >= self.nbReqMax:
+                break
+            nbReq += 1
             self.receivedPaquetOfCurrentReq = {}
             self.receivePacketTimeUs = {}
             self.ReceiveAllDataPacketEvent.clear()
@@ -221,7 +227,7 @@ class GatewayTDAMAC:
                 if diff > self.jitterThresholdUs:
                     print(f"Node {nodeId} gigue/jitter: {diff}")
                     # TODO: Adjust transmit delays
-                    mustRestransmitDelays = True
+                    #mustRestransmitDelays = True
 
             if mustRestransmitDelays:
                 self.modemGateway.removeRxCallback(self.packetCallback)
@@ -237,10 +243,19 @@ class GatewayTDAMAC:
             print(f"Gateway: Waiting for {waitTimeSec} seconds before the next period")
             time.sleep(waitTimeSec)
         self.modemGateway.removeRxCallback(self.packetCallback)
+        print("Gateway: nb data packet received" + str(len(self.receivedPaquets)))
+        for i in range(len(self.topology)):
+            # filter the received packets by node
+            nbPacket = 0
+            for pkt in self.receivedPaquets:
+                if pkt.header.src == self.topology[i]:
+                    nbPacket += 1
+            print(f"Node {self.topology[i]} received {nbPacket} packets")
 
     def packetCallback(self, pkt):
         if pkt.header.src == self.gatewayId:
             return
+        printPacket(pkt)
         # check if we have received a data packet
         if pkt.header.type == ID_PAQUET_DATA and pkt.header.dsn == self.dataPaquetSequenceNumber:
             self.receivedPaquetOfCurrentReq[pkt.header.src] = pkt

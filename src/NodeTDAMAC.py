@@ -19,7 +19,7 @@ class NodeTDAMAC:
     def __init__(self, modem: IModem,
                  address: int,
                  gatewayAddress: int = 0,
-                 dataPacketOctetSize: int = 512,
+                 dataPacketOctetSize: int = 8,
                  transmitTimeCalc: ModemTransmissionCalculator = ModemTransmissionCalculator()
                  ):
         """Constructor of the NodeTDAMAC class
