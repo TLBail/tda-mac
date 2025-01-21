@@ -117,6 +117,8 @@ class GatewayTDAMAC:
                 self.nodeTwoWayTimeOfFlightUs[pkt.header.src] = tof
                 self.event.set()  # liberate the event to get the next node time of flight
 
+                Logger.debug(f"Node {pkt.header.src} two-way time of flight (PING PAQUET): {tof} µs", pkt)
+
         self.modemGateway.addRxCallback(modemCallback)
 
         for node in self.topology:
@@ -129,7 +131,7 @@ class GatewayTDAMAC:
                 if self.event.wait(timeout=self.timeoutPingSec):
                     self.event.clear()
                     # print(f"Succès de la réponse du nœud {node}")
-                    Logger.info(f"Node {node} answered successfully in {self.nodeTwoWayTimeOfFlightUs[node]} us")
+                    Logger.info(f"Node {node} answered successfully in {self.nodeTwoWayTimeOfFlightUs[node]} µs")
                     break
                 else:
                     nb_attempts += 1

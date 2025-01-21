@@ -108,6 +108,8 @@ class NodeTDAMAC:
                     dsn=packet.header.dsn
                 )
                 printPacket(pkt)
+                # Logger.debug(f"Sent packet [{ID_PAQUET_DATA}] to {self.address}", pkt)
+                
 
 
                 self.modem.send(
