@@ -7,7 +7,7 @@ from src.Mock.modem_mock_node import ModemMockNode
 from src.Mock.node_mock_gateway import NodeMockGateway
 from src.NodeTDAMAC import NodeTDAMAC
 from src.constantes import ID_PAQUET_TDI, BROCAST_ADDRESS
-from ahoi.modem.packet import makePacket, printPacket
+from lib.ahoi.modem.packet import makePacket, printPacket
 from src.constantes import FLAG_R
 import time
 
