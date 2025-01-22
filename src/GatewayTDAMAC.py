@@ -1,13 +1,12 @@
 from .i_modem import IModem
 import threading
 from typing import Dict
-from lib.ahoi.modem.packet import printPacket
+from lib.ahoi.modem.packet import packet2HexString, printPacket
 from src.modem import Modem
 from src.constantes import BROCAST_ADDRESS, GATEWAY_ID, ID_PAQUET_TDI, ID_PAQUET_REQ_DATA, ID_PAQUET_PING, FLAG_R, \
-    ID_PAQUET_DATA
+    ID_PAQUET_DATA, PAQUET_SIZE
 from src.ModemTransmissionCalculator import ModemTransmissionCalculator
 import time
-
 from src.utils.Logger import Logger as L
 
 Logger = L("GATEWAY")
@@ -20,7 +19,7 @@ class GatewayTDAMAC:
     """
     def __init__(self, modemGateway: IModem,
                  topology: [],
-                 dataPacketOctetSize: int = 8,
+                 dataPacketOctetSize: int = PAQUET_SIZE,
                  transmitTimeCalc: ModemTransmissionCalculator = ModemTransmissionCalculator(),
                  nbReqMax: int = -1,
                  maxAttemps : int = 10
@@ -128,6 +127,8 @@ class GatewayTDAMAC:
 
                 self.nodeTwoWayTimeOfFlightUs[pkt.header.src] = tof
                 self.event.set()  # liberate the event to get the next node time of flight
+                Logger.debug(f"Node {pkt.header.src} two-way time of flight (PING PAQUET): {tof} µs")
+                Logger.logRX(pkt)
 
         self.modemGateway.addRxCallback(modemCallback)
 

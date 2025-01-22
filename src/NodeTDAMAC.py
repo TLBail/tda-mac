@@ -1,12 +1,10 @@
 import time
-from enum import Enum, auto
 from src.i_modem import IModem
 import threading
-from src.constantes import ID_PAQUET_TDI, ID_PAQUET_DATA, ID_PAQUET_REQ_DATA
+from src.constantes import ID_PAQUET_TDI, ID_PAQUET_DATA, ID_PAQUET_REQ_DATA, PAQUET_SIZE
 from src.modem import Modem
 from src.ModemTransmissionCalculator import ModemTransmissionCalculator
 from lib.ahoi.modem.packet import makePacket, printPacket
-from queue import Queue
 import threading
 
 from src.utils.Logger import Logger as L
@@ -23,7 +21,7 @@ class NodeTDAMAC:
     def __init__(self, modem: IModem,
                  address: int,
                  gatewayAddress: int = 0,
-                 dataPacketOctetSize: int = 8,
+                 dataPacketOctetSize: int = PAQUET_SIZE,
                  transmitTimeCalc: ModemTransmissionCalculator = ModemTransmissionCalculator(),
                  responsePayload: bytearray = bytearray("no payload", 'utf-8')
                  ):
@@ -106,7 +104,8 @@ class NodeTDAMAC:
                     dsn=packet.header.dsn
                 )
                 printPacket(pkt)
-                # Logger.debug(f"Sent packet [{ID_PAQUET_DATA}] to {self.address}", pkt)
+                Logger.debug(f"Sent packet [{ID_PAQUET_DATA}] to {self.address}", pkt)
+                Logger.logTX(pkt)
                 
 
 

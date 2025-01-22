@@ -17,5 +17,6 @@
         "**/.venv": true,
         "**/*.egg-info": true,
         "**/__pycache__": true,
+        "**/__init__.py": true,
     }
 }

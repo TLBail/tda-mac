@@ -1,10 +1,10 @@
 from datetime import datetime
-from smtplib import bCRLF
-import time
 from enum import Enum
 from lib.ahoi.modem.packet import packet2HexString
 import string
-import os
+import os 
+from datetime import datetime
+import time
 
 class bcolors:
     HEADER = '\033[95m'
@@ -26,10 +26,22 @@ class Logger:
         self.title = title
         self.logname = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
 
-    def __printRxRax(self, pkt):
+    def __print(self, level: LOGLEVELS, text: str, *args, **kwargs):
+        now = datetime.now()
+
+        print(f"{level.value}{now.strftime('%Y-%m-%d %H:%M:%S')} [{self.title}] {level.name}:{bcolors.ENDC} {text}", *args, **kwargs)
+
+    def logTX(self, pkt):
+        output = "TX@"
+        output += "{:.3f}".format(time.time())
+        output += " "
+        output += packet2HexString(pkt)
+
         os.makedirs("logs", exist_ok=True)
+        with open(f"logs/{self.logname}.log", "a") as f:
+            f.write(output + "\n")
 
-
+    def logRX(self, pkt):
         output = "RX@"
         output += "{:.3f}".format(time.time())
         output += " "
@@ -43,30 +55,22 @@ class Logger:
             )
         )
         output += ")"
-        print(f"{bcolors.UNDERLINE}{output}{bcolors.ENDC}")
 
+        os.makedirs("logs", exist_ok=True)
         with open(f"logs/{self.logname}.log", "a") as f:
             f.write(output + "\n")
 
-    def __print(self, level: LOGLEVELS, text: str, pkt = None, *args, **kwargs):
-        now = datetime.now()
+    def debug(self, text: str, *args, **kwargs):
+        self.__print(LOGLEVELS.DEBUG, text, *args, **kwargs)
 
-        if pkt is not None:
-            self.__printRxRax(pkt)
-
-        print(f"{level.value}{now.strftime('%Y-%m-%d %H:%M:%S')} [{self.title}] {level.name}:{bcolors.ENDC} {text}", *args, **kwargs)
-
-    def debug(self, text: str, pkt = None, *args, **kwargs):
-        self.__print(LOGLEVELS.DEBUG, text, pkt, *args, **kwargs)
-
-    def info(self, text: str, pkt = None, *args, **kwargs):
-        self.__print(LOGLEVELS.INFO, text, pkt, *args, **kwargs)
+    def info(self, text: str, *args, **kwargs):
+        self.__print(LOGLEVELS.INFO, text, *args, **kwargs)
     
-    def warning(self, text: str, pkt = None, *args, **kwargs):
-        self.__print(LOGLEVELS.WARNING, text, pkt, *args, **kwargs)
+    def warning(self, text: str, *args, **kwargs):
+        self.__print(LOGLEVELS.WARNING, text, *args, **kwargs)
     
-    def error(self, text: str, pkt = None, *args, **kwargs):
-        self.__print(LOGLEVELS.ERROR, text, pkt, *args, **kwargs)
+    def error(self, text: str, *args, **kwargs):
+        self.__print(LOGLEVELS.ERROR, text, *args, **kwargs)
 
-    def log(self, level: LOGLEVELS, text: str, pkt, *args, **kwargs):
-        self.__print(level, text, pkt, *args, **kwargs)
+    def log(self, level: LOGLEVELS, text: str, *args, **kwargs):
+        self.__print(level, text, *args, **kwargs)
