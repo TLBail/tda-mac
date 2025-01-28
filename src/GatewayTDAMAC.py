@@ -8,6 +8,7 @@ from src.constantes import BROCAST_ADDRESS, GATEWAY_ID, ID_PAQUET_TDI, ID_PAQUET
 from src.ModemTransmissionCalculator import ModemTransmissionCalculator
 import time
 from src.utils.Logger import Logger as L
+from typing import List
 
 Logger = L("GATEWAY")
 
@@ -18,7 +19,7 @@ class GatewayTDAMAC:
     and the transmission of data packets to the nodes.
     """
     def __init__(self, modemGateway: IModem,
-                 topology: [],
+                 topology: List,
                  dataPacketOctetSize: int = PAQUET_SIZE,
                  transmitTimeCalc: ModemTransmissionCalculator = ModemTransmissionCalculator(),
                  nbReqMax: int = -1,
@@ -34,7 +35,7 @@ class GatewayTDAMAC:
         """
         self.assignedTransmitDelaysUs = {}  # Dictionary of assigned transmission delays
         self.modemGateway: IModem = modemGateway  # Modem used to communicate with the nodes
-        self.topology: [] = topology  # List of nodes in the network
+        self.topology: List = topology  # List of nodes in the network
         self.nodeTwoWayTimeOfFlightUs: Dict[str, int] = {}  # Two-way time of flight of the nodes
         self.dataPacketOctetSize = dataPacketOctetSize  # Size of data packets in octets
         self.transmitTimeCalc = transmitTimeCalc  # Modem transmission calculator
@@ -59,7 +60,7 @@ class GatewayTDAMAC:
         self.expectedNodeAdress = -1
 
     @classmethod
-    def fromSerialPort(cls, serialport: str, topology: []):
+    def fromSerialPort(cls, serialport: str, topology: List):
         modem = Modem()
         modem.connect(serialport)
         modem.receive()
@@ -128,7 +129,7 @@ class GatewayTDAMAC:
                 self.nodeTwoWayTimeOfFlightUs[pkt.header.src] = tof
                 self.event.set()  # liberate the event to get the next node time of flight
                 Logger.debug(f"Node {pkt.header.src} two-way time of flight (PING PAQUET): {tof} µs")
-                Logger.logRX(pkt)
+                Logger.logRX(pkt, "gateway")
 
         self.modemGateway.addRxCallback(modemCallback)
 

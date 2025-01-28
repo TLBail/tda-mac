@@ -1,4 +1,4 @@
-from ahoi.modem.modem import Modem as AHOIModem
+from lib.ahoi.modem.modem import Modem as AHOIModem
 from .i_modem import IModem
 from src.utils.Logger import Logger as L
 

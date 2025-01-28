@@ -31,17 +31,17 @@ class Logger:
 
         print(f"{level.value}{now.strftime('%Y-%m-%d %H:%M:%S')} [{self.title}] {level.name}:{bcolors.ENDC} {text}", *args, **kwargs)
 
-    def logTX(self, pkt):
+    def logTX(self, pkt, name: str = ""):
         output = "TX@"
         output += "{:.3f}".format(time.time())
         output += " "
         output += packet2HexString(pkt)
 
         os.makedirs("logs", exist_ok=True)
-        with open(f"logs/{self.logname}.log", "a") as f:
+        with open(f"logs/{name}-{self.logname}.log", "a") as f:
             f.write(output + "\n")
 
-    def logRX(self, pkt):
+    def logRX(self, pkt, name: str = ""):
         output = "RX@"
         output += "{:.3f}".format(time.time())
         output += " "
@@ -57,7 +57,7 @@ class Logger:
         output += ")"
 
         os.makedirs("logs", exist_ok=True)
-        with open(f"logs/{self.logname}.log", "a") as f:
+        with open(f"logs/{name}-{self.logname}.log", "a") as f:
             f.write(output + "\n")
 
     def debug(self, text: str, *args, **kwargs):

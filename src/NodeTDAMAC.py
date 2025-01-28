@@ -6,7 +6,7 @@ from src.modem import Modem
 from src.ModemTransmissionCalculator import ModemTransmissionCalculator
 from lib.ahoi.modem.packet import makePacket, printPacket
 import threading
-
+from typing import List
 from src.utils.Logger import Logger as L
 
 Logger = L("NODE")
@@ -50,13 +50,15 @@ class NodeTDAMAC:
         self.modem.addRxCallback(self.NodeCallBack)
 
     @classmethod
-    def fromSerialPort(cls, serialport: str, topology: []):
+    def fromSerialPort(cls, serialport: str, topology: List):
         # Create a modem instance and connect it to the serial port
         modem = Modem()
         modem.connect(serialport)
         modem.receive()
+
         # Return an instance of NodeTDAMAC
-        return cls(modem, topology)
+        address = topology[0] if topology else 0
+        return cls(modem, address)
 
     def setReponsePayload(self, payload: bytearray):
         self.responsePayload = payload
@@ -105,7 +107,7 @@ class NodeTDAMAC:
                 )
                 printPacket(pkt)
                 Logger.debug(f"Sent packet [{ID_PAQUET_DATA}] to {self.address}", pkt)
-                Logger.logTX(pkt)
+                Logger.logTX(pkt, f"node{self.address}")
                 
 
 
