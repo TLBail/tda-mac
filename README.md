@@ -44,9 +44,6 @@ Encadré par :
 - Benoit Parrein
 - Cyprien Aoustin
 
-## Licence
-Tous droits réservés. Toute reproduction, même partielle, est interdite sans autorisation préalable.
-
 ---
 
 Ce projet a été développé dans le cadre d'un travail de recherche à l'École Polytechnique de l'Université de Nantes.
